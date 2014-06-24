@@ -178,4 +178,46 @@ class Model(conf: Config) {
     }
     entries.toIterable
   }
+
+  object Export {
+    def killAlpha(img: Image[RGBA]): Image[RGBA] = new Image[RGBA] {
+      def width = img.width; def height = img.height
+      def apply(x: Int, y: Int): RGBA = {
+        val p = img(x, y)
+        rgba(p.red, p.green, p.blue, 255)
+      }
+    }
+
+    def onlyAlpha(img: Image[RGBA]): Image[RGBA] = new Image[RGBA] {
+      def width = img.width; def height = img.height
+      def apply(x: Int, y: Int): RGBA = {
+        val p = img(x, y)
+        rgba(p.alpha, p.alpha, p.alpha, 255)
+      }
+    }
+
+    def export(): Unit = {
+      import rapture.core.strategy.throwExceptions
+      val singleFile = conf.inputFiles.lengthCompare(1) > 0
+      for {
+        file <- if (singleFile) conf.inputFiles.iterator else Progressor(conf.inputFiles)
+        dbpf = DbpfFile.read(file)
+        e <- if (singleFile) Progressor(dbpf.entries) else dbpf.entries
+        if e.tgi matches Tgi.Fsh
+        hexId = f"${e.tgi.iid}%08x" if conf.iidPattern.matcher(hexId).matches
+        fsh = e.toBufferedEntry.convert[Fsh].content
+        (elem, i) <- fsh.elements zip (Stream from 0)
+        (image, j) <- elem.images zip (Stream from 0)
+        (img, prefix) <-
+          if (!conf.alphaSeparate) Seq((image, hexId))
+          else Seq((killAlpha(image), hexId), (onlyAlpha(image), hexId + "_a"))
+        name = prefix +
+          (if (fsh.elements.tail.nonEmpty) "_" + i else "") +
+          (if (elem.images.tail.nonEmpty) "_" + j else "")
+        target = new File(conf.outFile, name + ".png") if conf.force || !target.exists
+      } {
+        ImageIO.write(img, "png", target)
+      }
+    }
+  }
 }

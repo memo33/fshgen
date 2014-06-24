@@ -1,6 +1,7 @@
 package fshgen
 
 import scala.util.matching.Regex
+import java.util.regex.Pattern
 import java.io.File
 import scdbpf._
 
@@ -30,8 +31,11 @@ case class Config(
   fshFormat: Fsh.FshFormat = Fsh.FshFormat.Dxt3,
   silent: Boolean = false,
   pattern: Regex = Config.defaultPattern,
-  alphaPattern: Regex = Config.defaultAlphaPattern
-)
+  alphaPattern: Regex = Config.defaultAlphaPattern,
+  iidPatternString: String = ".*"
+) {
+  lazy val iidPattern: Pattern = Pattern.compile(iidPatternString, Pattern.CASE_INSENSITIVE)
+}
 object Config {
   val hexId = """(0[xX])?\p{XDigit}{8}"""
   val hexAlpha = hexId + """(?=[ _](a|alpha)[\W_])"""
@@ -126,35 +130,63 @@ object Main extends App {
           else success
         }
       )
-//    cmd("export")
-//      .action { (_, c) => c.copy(mode = Mode.Export) }
-//      .text("export FSH files as PNGs from DBPF dat files")
+    cmd("export")
+      .action { (_, c) => c.copy(mode = Mode.Export) }
+      .text("export FSH files as PNGs from DBPF dat files")
+      .children(
+        opt[File]('o', "output") valueName("<file>") text ("output directory for export. If absent, current directory is used.")
+          action { (f, c) => c.copy(outFile = f) }
+          validate { f => if (f.isDirectory) success else failure("output must be a directory and must exist") },
 
+        opt[Unit]('f', "force") text ("force overwriting existing image files")
+          action { (_, c) => c.copy(force = true) },
+
+        opt[String]('p', "pattern") text ("a regex pattern to filter the 8-digit hex representation of the IIDs, such as '.*[49ef]' or '57.*'")
+          action { (s, c) => c.copy(iidPatternString = s) },
+
+        opt[Unit]("alpha-separate") text ("export alpha channels as separate files")
+          action { (_, c) => c.copy(alphaSeparate = true) },
+
+        opt[Unit]("silent") text ("do not indicate the progress")
+          action { (_, c) => c.copy(silent = true) },
+
+        arg[File]("<file>...") unbounded() optional()
+          text ("dat files to export FSHs from. If length is zero, the filenames are read from std.in.")
+          action { (f, c) => c.copy(inputFiles = c.inputFiles :+ f) }
+
+      )
     checkConfig { c => if (c.mode != null) success else failure("either 'import' or 'export' command required") }
   }
 
   def collectInputFiles(config: Config): Config = {
-    if (!config.inputFiles.isEmpty) config else {
-      val files = Stream continually scala.io.StdIn.readLine takeWhile (_ != null) filter (_.nonEmpty) flatMap { s =>
-        val file = new File(s)
-        if (!file.exists) {
-          println(s"File $file does not exist and has been skipped")
-          None
-        } else Some(file)
-      }
-      config.copy(inputFiles = files)
+    val files =
+      if (!config.inputFiles.isEmpty)
+        config.inputFiles
+      else
+        Stream continually scala.io.StdIn.readLine takeWhile (_ != null) filter (_.nonEmpty) map (s => new File(s))
+    val existingFiles = files flatMap { file =>
+      if (!file.exists) {
+        println(s"File $file does not exist and has been skipped")
+        None
+      } else Some(file)
     }
+    config.copy(inputFiles = existingFiles)
   }
 
   parser.parse(args, Config()) map collectInputFiles map { conf =>
     val model = new Model(conf)
-    val entries = model.collectImages()
-    import rapture.core.strategy.throwExceptions
-    if (!conf.append || !conf.outFile.exists) {
-      DbpfFile.write(entries, conf.outFile)
-    } else {
-      val dbpf = DbpfFile.read(conf.outFile)
-      dbpf.write(dbpf.entries.toStream ++ entries) // lazy evaluation
+    conf.mode match {
+      case Mode.Import =>
+        val entries = model.collectImages()
+        import rapture.core.strategy.throwExceptions
+        if (!conf.append || !conf.outFile.exists) {
+          DbpfFile.write(entries, conf.outFile)
+        } else {
+          val dbpf = DbpfFile.read(conf.outFile)
+          dbpf.write(dbpf.entries.toStream ++ entries) // lazy evaluation
+        }
+      case Mode.Export =>
+        model.Export.export()
     }
     if (!conf.silent) println() // complete the line started by progressor
     println("SUCCESS!")
