@@ -9,6 +9,7 @@ import com.mortennobel.imagescaling.ResampleOp
 import javax.imageio.ImageIO
 
 import scala.language.implicitConversions
+import Experimental.bufferedImageAsImage
 
 class Model(conf: Config) {
 
@@ -22,33 +23,7 @@ class Model(conf: Config) {
   lazy val grass2Dark = Curves.Darkening(grass2)
   lazy val grass3Dark = Curves.Darkening(grass3)
 
-  def argbToRGBA(argb: Int): RGBA = {
-    RGBA(
-       argb & 0xFF000000        | // alpha
-      (argb & 0x00FF0000) >> 16 | // red
-       argb & 0x0000FF00        | // green
-      (argb & 0x000000FF) << 16   // blue
-    )
-  }
-
-  implicit def imageToBufferedImage(img: Image[RGBA]): BufferedImage = {
-    val w = img.width
-    val h = img.height
-    val arr = new Array[Int](img.width * img.height)
-    for (i <- 0 until h; j <- 0 until w) {
-      val x: RGBA = img(j, i)
-      arr(i * w + j) = (x.alpha & 0xFF) << 24 | (x.red & 0xFF) << 16 | (x.green & 0xFF) << 8 | (x.blue & 0xFF)
-    }
-    val bi = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB)
-    bi.setRGB(0, 0, w, h, arr, 0, w)
-    bi
-  }
-
-  implicit def bufferedImageAsImage(img: BufferedImage): Image[RGBA] = new Image[RGBA] {
-    def height = img.getHeight
-    def width = img.getWidth
-    def apply(x: Int, y: Int): RGBA = argbToRGBA(img.getRGB(x, y))
-  }
+  implicit def imageToBufferedImage(img: Image[RGBA]): BufferedImage = Experimental.imageToBufferedImage(img)
 
   def imageAsAlpha(img: Image[RGBA]): Image[Gray] = new Image[Gray] {
     def height = img.height
@@ -198,7 +173,7 @@ class Model(conf: Config) {
 
     def export(): Unit = {
       import rapture.core.strategy.throwExceptions
-      val singleFile = conf.inputFiles.lengthCompare(1) > 0
+      val singleFile = conf.inputFiles.lengthCompare(1) <= 0
       for {
         file <- if (singleFile) conf.inputFiles.iterator else Progressor(conf.inputFiles)
         dbpf = DbpfFile.read(file)

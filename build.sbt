@@ -47,7 +47,7 @@ jarName in assembly := s"${name.value}-${version.value}.jar"
 mainClass in assembly := Some("fshgen.Main")
 
 
-libraryDependencies += "scdbpf" %% "scdbpf" % "0.1.2" from "https://dl.dropboxusercontent.com/s/2j6ybqiqdesk90n/scdbpf_2.11-0.1.2.jar"
+libraryDependencies += "scdbpf" %% "scdbpf" % "0.1.3" from "https://dl.dropboxusercontent.com/s/p2pe6vsqyvs3xp6/scdbpf_2.11-0.1.3.jar"
 
 libraryDependencies += "com.jsuereth" %% "scala-arm" % "1.4"
 
