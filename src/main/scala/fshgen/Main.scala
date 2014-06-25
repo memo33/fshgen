@@ -177,7 +177,7 @@ object Main extends App {
     val model = new Model(conf)
     conf.mode match {
       case Mode.Import =>
-        val entries = model.collectImages()
+        val entries = model.Import.collectImages()
         import rapture.core.strategy.throwExceptions
         if (!conf.append || !conf.outFile.exists) {
           DbpfFile.write(entries, conf.outFile)
