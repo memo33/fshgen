@@ -177,7 +177,7 @@ object Main extends App {
     val model = new Model(conf)
     conf.mode match {
       case Mode.Import =>
-        val entries = model.Import.collectImages()
+        val entries = model.collectImages()
         import rapture.core.strategy.throwExceptions
         if (!conf.append || !conf.outFile.exists) {
           DbpfFile.write(entries, conf.outFile)
@@ -186,7 +186,7 @@ object Main extends App {
           dbpf.write(dbpf.entries.toStream ++ entries) // lazy evaluation
         }
       case Mode.Export =>
-        model.Export.export()
+        model.export()
     }
     if (!conf.silent) println() // complete the line started by progressor
     println("SUCCESS!")
