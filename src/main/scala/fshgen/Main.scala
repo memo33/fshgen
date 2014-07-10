@@ -51,8 +51,8 @@ object Main extends App {
     scopt.Read.reads(s => (Fsh.FshFormat withName s).asInstanceOf[Fsh.FshFormat])
 
   val parser = new scopt.OptionParser[Config]("fshgen") {
-    head("fshgen", "0.1.0")
-    note("some notes.\n")
+    head("fshgen", "0.1.1")
+    note("A command line tool for converting FSH files back and forth.\n")
     help("help") text ("prints this usage text")
 
     cmd("import")
