@@ -114,22 +114,9 @@ object Main extends App {
 
         arg[File]("<file>...") unbounded() optional()
           text ("image files to import. If length is zero, the filenames are read from std.in.")
-          action { (f, c) => c.copy(inputFiles = c.inputFiles :+ f) },
-
-        checkConfig { c =>
-          if (c.outFile != null && c.outFile.exists && !c.force && !c.append)
-            failure(s"Output file ${c.outFile} already exists. Pass '-f' to force overwriting of existing file or '-a' for appending.")
-          else if (c.brighten && c.darken)
-            failure("cannot apply both 'darken' and 'brighten'")
-          else if (c.backgroundBright && c.backgroundDark)
-            failure("cannot apply both 'background-bright' and 'background-dark'")
-          else if (c.brighten && c.backgroundBright)
-            failure("background is applied first and would be brightened additionally, use 'background-dark' instead")
-          else if (c.darken && c.backgroundDark)
-            failure("background is applied first and would be darkened additionally, use 'background-bright' instead")
-          else success
-        }
+          action { (f, c) => c.copy(inputFiles = c.inputFiles :+ f) }
       )
+
     cmd("export")
       .action { (_, c) => c.copy(mode = Mode.Export) }
       .text("export FSH files as PNGs from DBPF dat files")
@@ -153,9 +140,24 @@ object Main extends App {
         arg[File]("<file>...") unbounded() optional()
           text ("dat files to export FSHs from. If length is zero, the filenames are read from std.in.")
           action { (f, c) => c.copy(inputFiles = c.inputFiles :+ f) }
-
       )
-    checkConfig { c => if (c.mode != null) success else failure("either 'import' or 'export' command required") }
+
+    checkConfig { c => c.mode match {
+      case Mode.Import =>
+        if (c.outFile != null && c.outFile.exists && !c.force && !c.append)
+          failure(s"Output file ${c.outFile} already exists. Pass '-f' to force overwriting of existing file or '-a' for appending.")
+        else if (c.brighten && c.darken)
+          failure("cannot apply both 'darken' and 'brighten'")
+        else if (c.backgroundBright && c.backgroundDark)
+          failure("cannot apply both 'background-bright' and 'background-dark'")
+        else if (c.brighten && c.backgroundBright)
+          failure("background is applied first and would be brightened additionally, use 'background-dark' instead")
+        else if (c.darken && c.backgroundDark)
+          failure("background is applied first and would be darkened additionally, use 'background-bright' instead")
+        else success
+      case Mode.Export => success
+      case _ => failure("either 'import' or 'export' command required")
+    }}
   }
 
   def collectInputFiles(config: Config): Config = {
