@@ -2,9 +2,11 @@ import AssemblyKeys._
 
 name := "fshgen"
 
-version := "0.1.1"
+organization := "com.github.memo33"
 
-scalaVersion := "2.11.0"
+version := "0.1.2-SNAPSHOT"
+
+scalaVersion := "2.11.2"
 
 scalacOptions ++= Seq(
   "-unchecked",
@@ -47,24 +49,14 @@ jarName in assembly := s"${name.value}-${version.value}.jar"
 mainClass in assembly := Some("fshgen.Main")
 
 
-libraryDependencies += "scdbpf" %% "scdbpf" % "0.1.3" from "https://dl.dropboxusercontent.com/s/p2pe6vsqyvs3xp6/scdbpf_2.11-0.1.3.jar"
-
-libraryDependencies += "com.jsuereth" %% "scala-arm" % "1.4"
-
-libraryDependencies += "passera.unsigned" %% "scala-unsigned" % "0.1.1" from "https://dl.dropboxusercontent.com/s/yojvk2bb7o1c627/scala-unsigned_2.11-0.1.1.jar"
-
-libraryDependencies += "com.propensive" %% "rapture-core" % "0.9.0"
-
-libraryDependencies += "com.propensive" %% "rapture-io" % "0.9.1"
-
-libraryDependencies += "jsquish" % "jsquish" % "0.1" from "https://dl.dropboxusercontent.com/s/7ijtzyjb353fyas/jsquish.jar"
-
 libraryDependencies += "com.mortennobel" % "java-image-scaling" % "0.8.5"
 
-resolvers += "stephenjudkins-bintray" at "http://dl.bintray.com/stephenjudkins/maven"
-
-libraryDependencies += "ps.tricerato" %% "pureimage" % "0.1.1"
 
 resolvers += Resolver.sonatypeRepo("public")
 
 libraryDependencies += "com.github.scopt" %% "scopt" % "3.2.0"
+
+
+resolvers += "memo33-gdrive-repo" at "https://googledrive.com/host/0B9r6o2oTyY34ZVc4SFBWMV9yb0E/repo/releases/"
+
+libraryDependencies += "com.github.memo33" %% "scdbpf" % "0.1.4"
