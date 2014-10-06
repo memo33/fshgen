@@ -56,7 +56,7 @@ trait Import { this: Model =>
     def height = img.height; def width = img.width
     def apply(x: Int, y: Int): Gray = {
       val p = img(x, y)
-      Gray(Seq(p.alpha & 0xff, p.red & 0xff, p.green & 0xff, p.blue & 0xff).max)
+      Gray(p.red & 0xff)
     }
   }
 
