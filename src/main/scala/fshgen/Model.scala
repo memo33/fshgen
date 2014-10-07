@@ -86,7 +86,7 @@ trait Import { this: Model =>
 
   def produceMips(bi: BufferedImage): Iterable[Image[RGBA]] = {
     if (conf.mipsEmbedded || conf.mipsSeparate) {
-      Iterable.iterate(bi, conf.mipsNumber + 1)(scaleHalf).tail map bufferedImageAsImage
+      Iterable.iterate(bi, conf.mipsNumber + 1 + (if (conf.hd) 1 else 0))(scaleHalf).tail map bufferedImageAsImage
     } else Iterable.empty
   }
 
@@ -103,7 +103,7 @@ trait Import { this: Model =>
       Iterable(BufferedEntry(tgi, fsh, compressed = true))
     } else {
       val descendingTgis = Iterator.iterate(tgi)(x => x.copy(iid = x.iid-1))
-      val mipFshs = mips map (img => Fsh(Seq(new FshElement(Iterable(img), conf.fshFormat)), conf.fshDirId))
+      val mipFshs = (if (conf.hd) mips.tail else mips) map (img => Fsh(Seq(new FshElement(Iterable(img), conf.fshFormat)), conf.fshDirId))
       (Iterable(fsh) ++ mipFshs) map (f => BufferedEntry(descendingTgis.next, f, compressed = true))
     }
   }

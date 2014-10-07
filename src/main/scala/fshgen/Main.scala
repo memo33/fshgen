@@ -19,6 +19,7 @@ case class Config(
   mipsSeparate: Boolean = false,
   mipsEmbedded: Boolean = false,
   mipsNumber: Int = 4,
+  hd: Boolean = false,
   iidOffset: Int = 0,
   gid: Int = Tgi.FshMisc.gid.get,
   darken: Boolean = false,
@@ -115,6 +116,9 @@ object Main extends App {
 
         opt[Unit]('m', "mips-separate") text ("create separate mipmaps")
           action { (_, c) => c.copy(mipsSeparate = true) },
+
+        opt[Unit]("hd") text ("for HD textures, effectively scales first separate mipmap to 0.25 instead of 0.5, implies 'mips-separate' flag")
+          action { (_, c) => c.copy(hd = true, mipsSeparate = true) },
 
         opt[Unit]('e', "mips-embedded") text ("create embedded mipmaps")
           action { (_, c) => c.copy(mipsEmbedded = true) },
