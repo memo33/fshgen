@@ -1,9 +1,9 @@
 package fshgen
 
-import scala.util.matching.Regex
+import scala.util.matching.Regex, Regex.Match
 import java.util.regex.Pattern
 import java.io.File
-import scdbpf._
+import scdbpf._, DbpfUtil._, RotFlip._
 
 
 object Mode extends Enumeration {
@@ -30,17 +30,61 @@ case class Config(
   fshDirId: Fsh.FshDirectoryId = Fsh.FshDirectoryId.G264,
   fshFormat: Fsh.FshFormat = Fsh.FshFormat.Dxt3,
   silent: Boolean = false,
-  pattern: Regex = Config.defaultPattern,
-  alphaPattern: Regex = Config.defaultAlphaPattern,
   iidPatternString: String = ".*"
 ) {
   lazy val iidPattern: Pattern = Pattern.compile(iidPatternString, Pattern.CASE_INSENSITIVE)
 }
 object Config {
-  val hexId = """(0[xX])?\p{XDigit}{8}"""
-  val hexAlpha = hexId + """(?=[ _](a|alpha)[\W_])"""
-  val defaultPattern = s"(?!.+$hexId)$hexId".r
-  val defaultAlphaPattern = s"(?!.+$hexAlpha)$hexAlpha".r
+  private val AbsId = "absId"; private val Sign = "sign"; private val RelId = "relId"
+  private val Rot = "rot"; private val Flip = "flip"; private val Alpha = "alpha"
+
+  private val absIdGroup = """(?:0x)?(\p{XDigit}{8}|0)"""         // absId
+  private val relIdGroup = """(\+|-)(?:0x)?(\p{XDigit}{1,8})"""   // sign, relId
+  private lazy val sliceRegex = new Regex(
+    "(?i)" +                              // case insensitve matching
+    """(?<![-\p{XDigit}])""" +            // avoids unwanted preceding chars
+    s"(?:$absIdGroup|$relIdGroup)" +      // matches id
+    "(?:-([0-3])-([01]))?" +              // matches optional rot flip
+    "(?:[_ ](a|b|b?alpha))?" +             // matches optional alpha/balpha tag
+    """(?=[_ \.])""",                     // ensures separation of id tokens
+    AbsId, Sign, RelId, Rot, Flip, Alpha)
+
+  class IdContext(text: String) {
+    val matches = (sliceRegex findAllMatchIn text).toSeq
+    def isAlpha: Boolean =
+      matches exists { m => val s = m.group(Alpha); s != null && s.toLowerCase.startsWith("a") }
+    def isSidewalkAlpha: Boolean =
+      matches exists { m => val s = m.group(Alpha); s != null && s.toLowerCase.startsWith("b") }
+    private[this] def extractRF(m: Match, default: RotFlip): RotFlip = {
+      val r = m.group(Rot); val f = m.group(Flip)
+      if (r != null & f != null) R0F0 / RotFlip(r.toInt, f.toInt)
+      else default
+    }
+    def extractLastId: Option[(Int, RotFlip)] =
+      matches.view.reverse.filter(_.group(AbsId) != null).headOption map { m =>
+        (Integer.parseInt(m.group(AbsId), 16), extractRF(m, R0F0))
+      }
+    def extractAllIds: Seq[(Int, RotFlip)] = {
+      val buf = new scala.collection.mutable.ListBuffer[(Int, RotFlip)]()
+      matches.foldLeft(0 -> R0F0) { case (lastAbs @ (lastAbsId, lastAbsRF), m) =>
+        val absIdString = m.group(AbsId)
+        val signString = m.group(Sign)
+        val relIdString = m.group(RelId)
+        if (absIdString != null) {
+          val id = Integer.parseInt(absIdString, 16)
+          val res = id -> extractRF(m, R0F0)
+          buf += res
+          if (id == 0) lastAbs else res
+        } else {
+          val id = lastAbsId + Integer.parseInt(signString + relIdString, 16)
+          buf += id -> extractRF(m, lastAbsRF)
+          lastAbs
+        }
+      }
+      buf.result()
+    }
+  }
+
 }
 
 object Main extends App {

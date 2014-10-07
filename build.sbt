@@ -49,6 +49,8 @@ jarName in assembly := s"${name.value}-${version.value}.jar"
 mainClass in assembly := Some("fshgen.Main")
 
 
+libraryDependencies += "org.scalatest" %% "scalatest" % "2.1.5" % "test"
+
 libraryDependencies += "com.mortennobel" % "java-image-scaling" % "0.8.5"
 
 

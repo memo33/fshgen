@@ -1,6 +1,6 @@
 package fshgen
 
-import scdbpf._, Fsh._
+import scdbpf._, Fsh._, DbpfUtil._, RotFlip._
 import java.io.File
 import ps.tricerato.pureimage._
 import java.awt.image.BufferedImage
@@ -24,11 +24,6 @@ class Model(val conf: Config) extends Import with Export {
 //  lazy val grass3Dark = Curves.Darkening(grass3)
 
   implicit def imageToBufferedImage(img: Image[RGBA]): BufferedImage = Experimental.imageToBufferedImage(img)
-
-  abstract class ProxyImage[A](img: Image[A]) extends Image[A] {
-    def height = img.height
-    def width = img.width
-  }
 
   def rgba(r: Int, g: Int, b: Int, a: Int): RGBA =
     RGBA((r & 0xff) | (g & 0xff) << 8 | (b & 0xff) << 16 | (a & 0xff) << 24)
@@ -79,8 +74,6 @@ trait Import { this: Model =>
     else img
   }
 
-  def applyEmbedBackgroundBI(bi: BufferedImage): BufferedImage = applyEmbedBackground(bi)
-
   def combineImageWithAlpha(img: Image[RGBA], alpha: Image[Gray]): Image[RGBA] = new ProxyImage(img) {
     assert(img.width == alpha.width, img.height == alpha.height)
     def apply(x: Int, y: Int): RGBA = RGBA(img(x, y).i & 0x00FFFFFF | alpha(x, y).i << 24)
@@ -130,25 +123,26 @@ trait Import { this: Model =>
 
     val entries = if (!conf.alphaSeparate) {
       Progressor(conf.inputFiles).flatMap { f =>
-        val id = extractId(conf.pattern, f.getName) getOrElse (defaultId.next)
-        val bi = applyEmbedBackgroundBI(ImageIO.read(f))
-        buildFshs(bi, buildTgi(id), if (conf.attachName) Some(fileStem(f)) else None)
+        val (id, rf) = new Config.IdContext(f.getName).extractLastId getOrElse (defaultId.next, R0F0)
+        val img = DihImage(applyEmbedBackground(ImageIO.read(f)), rf)
+        buildFshs(img, buildTgi(id), if (conf.attachName) Some(fileStem(f)) else None)
       }
     } else {
-      val alphas, colors = scala.collection.mutable.Map.empty[Int, File]
+      val alphas, colors = scala.collection.mutable.Map.empty[Int, (File, RotFlip)]
       for (f <- conf.inputFiles) {
-        val alphaId = extractId(conf.alphaPattern, f.getName)
-        val id = if (alphaId.isDefined) alphaId.get else extractId(conf.pattern, f.getName) getOrElse (defaultId.next)
-        (if (alphaId.isDefined) alphas else colors)(id) = f
+        val idContext = new Config.IdContext(f.getName)
+        val (id, rf) = idContext.extractLastId getOrElse (defaultId.next, R0F0)
+        (if (idContext.isAlpha) alphas else colors)(id) = f -> rf
       }
-      Progressor(colors).flatMap { case (id, colFile) =>
-        val alphaFile = alphas.get(id)
-        val bi = ImageIO.read(colFile)
-        val biCombined: BufferedImage = if (alphaFile.isEmpty) applyEmbedBackgroundBI(bi) else {
-          val biAlpha = ImageIO.read(alphaFile.get)
-          applyEmbedBackground(combineImageWithAlpha(bufferedImageAsImage(bi), imageAsAlpha(bufferedImageAsImage(biAlpha))))
+      Progressor(colors).flatMap { case (id, (colFile, colRf)) =>
+        val img = DihImage(ImageIO.read(colFile), colRf)
+        val combined = alphas.get(id) match {
+          case Some((alphaFile, alphaRf)) =>
+            val alpha = DihImage(ImageIO.read(alphaFile), alphaRf)
+            applyEmbedBackground(combineImageWithAlpha(img, imageAsAlpha(alpha)))
+          case None => applyEmbedBackground(img)
         }
-        buildFshs(biCombined, buildTgi(id), if (conf.attachName) Some(fileStem(colFile)) else None)
+        buildFshs(combined, buildTgi(id), if (conf.attachName) Some(fileStem(colFile)) else None)
       }
     }
     entries.toIterable
