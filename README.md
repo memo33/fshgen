@@ -1,4 +1,4 @@
- fshgen 0.1.1
+ fshgen 0.1.2
 ==============
 
 A command line tool for converting FSH files back and forth. Among the features
@@ -106,6 +106,54 @@ to export only those FSH files with an 8th digit of 4, 9, e or f, or
 to export all FSH files with IIDs starting with 57.
 
 Make sure to check `fshgen --help` for all the options.
+
+
+ Slicing
+---------
+
+If you pass the `--slice` or `-s` option to the import command, an extensive
+matching process is started that doesn't only allow for automatically slicing
+images into pieces, but also supports composition of multiple layers and
+automatic generation of sidewalk textures. The rules for this are as follows.
+
+The algorithm extracts IIDs from every file name. Consider for example:
+
+    0x12340000-2-1_+0x100_0_+200-1-0_56780000_some_more_text.png
+
+The file name contains absolute IDs, relative IDs, and Zeroes. Absolute IDs
+consist of 8 hex digits (optionally prefixed by `0x`), optionally suffixed by
+rotation and flip (`-2-1`, defaults to `-0-0`). Relative IDs start with `+`
+or `-` and indicate the offset (pos. or neg.) in relation to the last absolute ID.
+If no rotation and flip is given, the orientation of the last absolute ID is assumed.
+Zero IDs (as seen between +0x100 and +200) indicate tiles to be ignored during
+the slicing process. The IDs can occur anywhere in the name, though they need
+to be properly separated from the rest of the text by underscore or blank.
+
+The order of slices is first left to right and then top to bottom (logical
+reading order). If the number of subimages and the number of extracted IDs are
+different, trailing instances are ignored.
+
+The IDs extracted from the above example would be:
+
+    0x12340000-2-1
+    0x12340100-2-1
+    0
+    0x12340200-1-0
+    0x56780000-0-0
+
+There can be multiple instances of subimages that map to the same ID (even in
+the same image file), in which case all of the subimages of a single ID are
+overlayed, allowing for composition of layers. Thus, a file named
+`12340000_+0.png` is sliced into two pieces which end up as layers of the
+same FSH file. The layers are processed in alphabetical file name order, such
+that the top most layer needs to have an alphabetically higher name than
+previous occurences of a specific ID (lowercase).
+
+If one of the IDs(-Rot—Flip) (preferrably the last one) is suffixed by
+`_a` or `_alpha`, the entire image is considered to be an alpha mask
+(optional). If one of the IDs is followed by `_b` or `_balpha`, the entire
+image is considered to be the alpha mask for sidewalk textures (optional).
+If and only if a sidewalk alpha mask is found, sidewalk textures are generated.
 
 
  Contact and Support

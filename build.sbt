@@ -4,7 +4,7 @@ name := "fshgen"
 
 organization := "com.github.memo33"
 
-version := "0.1.2-SNAPSHOT"
+version := "0.1.2"
 
 scalaVersion := "2.11.2"
 
@@ -26,10 +26,13 @@ readmePath <<= (baseDirectory) map { (b: File) => b / "README.md" }
 
 licensePath <<= (baseDirectory) map { (b: File) => b / "LICENSE" }
 
-dist <<= (assembly in Compile, readmePath, licensePath, zipPath, streams) map {
-  (fatjar: File, readme: File, license: File, out: File, ts: TaskStreams) =>
+examplesPath <<= (baseDirectory) map { (b: File) => b / "examples" }
+
+dist <<= (assembly in Compile, readmePath, licensePath, examplesPath, zipPath, streams) map {
+  (fatjar: File, readme: File, license: File, examples: File, out: File, ts: TaskStreams) =>
     val inputs: Seq[(File,String)] = Seq(fatjar, readme, license) x Path.flat
-    IO.zip(inputs, out)
+    val exampleImages: Seq[(File, String)] = examples.listFiles.toSeq x Path.flatRebase("examples")
+    IO.zip(inputs ++ exampleImages, out)
     ts.log.info("Created zip archive at " + out.toString)
     out
 }

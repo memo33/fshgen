@@ -121,8 +121,10 @@ object Main extends App {
         opt[Unit]('m', "mips-separate") text ("create separate mipmaps")
           action { (_, c) => c.copy(mipsSeparate = true) },
 
-        opt[Unit]("hd") text ("for HD textures, effectively scales first separate mipmap to 0.25 instead of 0.5, implies 'mips-separate' flag")
-          action { (_, c) => c.copy(hd = true, mipsSeparate = true) },
+        opt[Unit]("hd") text ("for HD textures, effectively scales first separate mipmap to 0.25 instead of 0.5, implies 'mips-separate' flag, also sets slice width and height to 256 if not specified otherwise")
+          action { (_, c) => c.copy(hd = true, mipsSeparate = true,
+            sliceWidth = if (c.sliceWidth != 128) c.sliceWidth else 256,
+            sliceHeight = if (c.sliceHeight != 128) c.sliceHeight else 256) },
 
         opt[Unit]('e', "mips-embedded") text ("create embedded mipmaps")
           action { (_, c) => c.copy(mipsEmbedded = true) },
@@ -131,7 +133,7 @@ object Main extends App {
           action { (n, c) => c.copy(mipsNumber = n) }
           validate { n => if (n >= 0) success else failure("number of mipmaps needs to be positive") },
 
-        opt[Unit]('s', "slice") text ("TODO TODO TODO")
+        opt[Unit]('s', "slice") text ("slice images into rectangles, optionally compose different layers for same ID, optionally apply separate alpha mask (a/alpha), optionally generate sidewalk textures if sidewalk alpha is present (b/balpha)")
           action { (_, c) => c.copy(slice = true) },
 
         opt[Int]("slice-width") text ("the width of sliced images")
