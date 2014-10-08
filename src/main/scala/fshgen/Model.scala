@@ -7,16 +7,20 @@ import java.awt.image.BufferedImage
 import scala.util.matching.Regex
 import com.mortennobel.imagescaling.ResampleOp
 import javax.imageio.ImageIO
+import scala.collection.mutable
+import scala.collection.SortedSet
 
 import scala.language.implicitConversions
 import Experimental.bufferedImageAsImage
+import Config.IdContext
 
 class Model(val conf: Config) extends Import with Export {
 
   lazy val sidewalk = bufferedImageAsImage(ImageIO.read(ClassLoader.getSystemResourceAsStream("textures/0x08200004.png")))
-//  lazy val grass1 = bufferedImageAsImage(ImageIO.read(ClassLoader.getSystemResourceAsStream("textures/0x251C1004.png")))
-//  lazy val grass2 = bufferedImageAsImage(ImageIO.read(ClassLoader.getSystemResourceAsStream("textures/0x251C2004.png")))
-//  lazy val grass3 = bufferedImageAsImage(ImageIO.read(ClassLoader.getSystemResourceAsStream("textures/0x251C3004.png")))
+  lazy val grass1 = bufferedImageAsImage(ImageIO.read(ClassLoader.getSystemResourceAsStream("textures/0x251C1004.png")))
+  lazy val grass2 = bufferedImageAsImage(ImageIO.read(ClassLoader.getSystemResourceAsStream("textures/0x251C2004.png")))
+  lazy val grass3 = bufferedImageAsImage(ImageIO.read(ClassLoader.getSystemResourceAsStream("textures/0x251C3004.png")))
+  lazy val grass = List(grass1, grass2, grass3)
 
   lazy val sidewalkDark = Curves.Darkening(sidewalk)
 //  lazy val grass1Dark = Curves.Darkening(grass1)
@@ -46,7 +50,91 @@ class Model(val conf: Config) extends Import with Export {
   }
 }
 
-trait Import { this: Model =>
+trait FileMatching { this: Model =>
+
+  private class LazyImageHolder(file: File, context: IdContext) {
+    private[this] var ids: Set[Int] = context.extractAllIds.map(_._1).toSet - 0
+    private[this] var img: Image[RGBA] = null
+    var destroyed = false
+
+    def image: Image[RGBA] = {
+      require(!destroyed)
+      if (img == null) {
+        img = ImageIO.read(file)
+      }
+      img
+    }
+    def release(id: Int) = {
+      ids -= id
+      if (ids.isEmpty) {
+        img = null
+        destroyed = true
+      }
+    }
+    lazy val subimages: Stream[Image[RGBA]] = for {
+      yOff <- (0 until image.height by conf.sliceWidth).toStream
+      xOff <- 0 until image.width by conf.sliceHeight
+    } yield new Image[RGBA] {
+      def width = conf.sliceWidth
+      def height = conf.sliceHeight
+      def apply(x: Int, y: Int): RGBA = image(xOff + x, yOff + y)
+    }
+  }
+
+  private lazy val contexts: Map[File, IdContext] =
+    conf.inputFiles.map(f => f -> new IdContext(f.getName))(scala.collection.breakOut)
+  private lazy val ids: Seq[Int] = (conf.inputFiles map contexts flatMap (_.extractAllIds) map (_._1)).distinct
+  private lazy val filenameOrdering = Ordering.by[File, String](fileStem(_).toLowerCase)
+  private lazy val srcFiles: scala.collection.Map[Int, SortedSet[File]] = {
+    val m = mutable.Map.empty[Int, SortedSet[File]]
+    for ((f, idc) <- contexts; (id, _) <- idc.extractAllIds) {
+      m(id) = m.getOrElse(id, SortedSet.empty(filenameOrdering)) + f
+    }
+    m
+  }
+  private lazy val lazyImages: Map[File, LazyImageHolder] =
+    contexts map { case (f, idc) => f -> new LazyImageHolder(f, idc) }
+
+  def buildSlicedEntries: Iterator[BufferedEntry[Fsh]] = {
+    Progressor(ids) flatMap { id => if (id == 0) Seq.empty else {
+      val layersWithContexts: Seq[(DihImage[RGBA], IdContext)] =
+        srcFiles(id).toSeq flatMap { file =>
+          val lazyImg = lazyImages(file)
+          val context = contexts(file)
+          context.extractAllIds.zip(lazyImg.subimages).collect {
+            case ((i, rf), img) if i == id => DihImage(img, rf) -> context
+          }
+        }
+      // TODO processing here, stack layers, add alphas, etc.
+      val colorLayers: List[Image[RGBA]] =
+        layersWithContexts.collect { case (img, context) if context.isColor => img } (scala.collection.breakOut)
+      val result = if (colorLayers.nonEmpty) {
+        val combinedLayers = colorLayers.tail.foldLeft(colorLayers.head) {
+          case (bottom, top) => overlay(top, bottom)
+        }
+        val alphaOpt = layersWithContexts find (_._2.isAlpha) map (x => imageAsAlpha(x._1))
+        val sidewalkAlphaOpt = layersWithContexts find (_._2.isSidewalkAlpha) map (x => imageAsAlpha(x._1))
+
+        val mainTexture = if (alphaOpt.isEmpty) {
+          applyEmbedBackground(combinedLayers)
+        } else {
+          applyEmbedBackground(combineImageWithAlpha(combinedLayers, alphaOpt.get))
+        }
+        val sidewalkTextures = sidewalkAlphaOpt.toList.flatMap { alpha =>
+          grass.map(g => combineImageWithAlpha(embedBackground(combinedLayers, g), alpha))
+        }
+        (mainTexture :: sidewalkTextures).zipWithIndex flatMap { case (img, i) =>
+          buildFshs(img, buildTgi(id + i * 0x10), if (conf.attachName && i == 0) Some(fileStem(srcFiles(id).head)) else None)
+        }
+      } else Seq.empty
+      // release processed files
+      srcFiles(id) foreach { file => lazyImages(file).release(id) }
+      result
+    }}
+  }
+}
+
+trait Import extends FileMatching { this: Model =>
   def imageAsAlpha(img: Image[RGBA]): Image[Gray] = new Image[Gray] {
     def height = img.height; def width = img.width
     def apply(x: Int, y: Int): Gray = {
@@ -65,6 +153,22 @@ trait Import { this: Model =>
         ((p.green & 0xff) * a + (q.green & 0xff) * (255 - a)) / 255,
         ((p.blue  & 0xff) * a + (q.blue  & 0xff) * (255 - a)) / 255,
         a)
+    }
+  }
+
+  def overlay(top: Image[RGBA], bottom: Image[RGBA]): Image[RGBA] = new ProxyImage(bottom) {
+    require(top.width == bottom.width && top.height == bottom.height)
+    def apply(x: Int, y: Int): RGBA = {
+      val p = top(x, y);      val q = bottom(x, y)
+      val a = p.alpha & 0xff; val b = q.alpha & 0xff
+      val c = (a * 255 + b * (255 - a)) / 255
+      if (c == 0) RGBA(0) else {
+        rgba(
+          ((p.red   & 0xff) * a * 255 + (q.red   & 0xff) * b * (255 - a)) / 255 / c,
+          ((p.green & 0xff) * a * 255 + (q.green & 0xff) * b * (255 - a)) / 255 / c,
+          ((p.blue  & 0xff) * a * 255 + (q.blue  & 0xff) * b * (255 - a)) / 255 / c,
+          c)
+      }
     }
   }
 
@@ -119,18 +223,18 @@ trait Import { this: Model =>
 
   def collectImages(): Iterable[BufferedEntry[Fsh]] = {
     val defaultId = Iterator.from(4, 0x100)
-    def extractId(r: Regex, s: String): Option[Int] = r findFirstIn s map (id => java.lang.Long.parseLong(id, 16).toInt)
-
-    val entries = if (!conf.alphaSeparate) {
+    val entries = if (conf.slice) {
+      buildSlicedEntries
+    } else if (!conf.alphaSeparate) {
       Progressor(conf.inputFiles).flatMap { f =>
-        val (id, rf) = new Config.IdContext(f.getName).extractLastId getOrElse (defaultId.next, R0F0)
+        val (id, rf) = new IdContext(f.getName).extractLastId getOrElse (defaultId.next, R0F0)
         val img = DihImage(applyEmbedBackground(ImageIO.read(f)), rf)
         buildFshs(img, buildTgi(id), if (conf.attachName) Some(fileStem(f)) else None)
       }
     } else {
       val alphas, colors = scala.collection.mutable.Map.empty[Int, (File, RotFlip)]
       for (f <- conf.inputFiles) {
-        val idContext = new Config.IdContext(f.getName)
+        val idContext = new IdContext(f.getName)
         val (id, rf) = idContext.extractLastId getOrElse (defaultId.next, R0F0)
         (if (idContext.isAlpha) alphas else colors)(id) = f -> rf
       }

@@ -20,6 +20,9 @@ case class Config(
   mipsEmbedded: Boolean = false,
   mipsNumber: Int = 4,
   hd: Boolean = false,
+  slice: Boolean = false,
+  sliceWidth: Int = 128,
+  sliceHeight: Int = 128,
   iidOffset: Int = 0,
   gid: Int = Tgi.FshMisc.gid.get,
   darken: Boolean = false,
@@ -52,6 +55,7 @@ object Config {
 
   class IdContext(text: String) {
     val matches = (sliceRegex findAllMatchIn text).toSeq
+    def isColor: Boolean = matches forall (_.group(Alpha) == null)
     def isAlpha: Boolean =
       matches exists { m => val s = m.group(Alpha); s != null && s.toLowerCase.startsWith("a") }
     def isSidewalkAlpha: Boolean =
@@ -65,14 +69,14 @@ object Config {
       matches.view.reverse.filter(_.group(AbsId) != null).headOption map { m =>
         (Integer.parseInt(m.group(AbsId), 16), extractRF(m, R0F0))
       }
-    def extractAllIds: Seq[(Int, RotFlip)] = {
+    lazy val extractAllIds: Seq[(Int, RotFlip)] = {
       val buf = new scala.collection.mutable.ListBuffer[(Int, RotFlip)]()
       matches.foldLeft(0 -> R0F0) { case (lastAbs @ (lastAbsId, lastAbsRF), m) =>
         val absIdString = m.group(AbsId)
         val signString = m.group(Sign)
         val relIdString = m.group(RelId)
         if (absIdString != null) {
-          val id = Integer.parseInt(absIdString, 16)
+          val id = java.lang.Long.parseLong(absIdString, 16).toInt
           val res = id -> extractRF(m, R0F0)
           buf += res
           if (id == 0) lastAbs else res
@@ -126,6 +130,15 @@ object Main extends App {
         opt[Int]('N', "mips-number") text ("number of mipmaps to generate, defaults to 4")
           action { (n, c) => c.copy(mipsNumber = n) }
           validate { n => if (n >= 0) success else failure("number of mipmaps needs to be positive") },
+
+        opt[Unit]('s', "slice") text ("TODO TODO TODO")
+          action { (_, c) => c.copy(slice = true) },
+
+        opt[Int]("slice-width") text ("the width of sliced images")
+          action { (n, c) => c.copy(sliceWidth = n) },
+
+        opt[Int]("slice-height") text ("the height of sliced images")
+          action { (n, c) => c.copy(sliceHeight = n) },
 
         opt[Int]('i', "iid-offset") text ("offset of IIDs")
           action { (off, c) => c.copy(iidOffset = off) },
