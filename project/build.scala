@@ -1,11 +1,10 @@
 import sbt._
-import java.io.File
 
 object FshGenDef extends Build {
 
-  val readmePath = TaskKey[File]("readme-path", "path to readme file")
-  val licensePath = TaskKey[File]("license-path", "path to license file")
-  val examplesPath = TaskKey[File]("examples-path", "path to folder of example files")
+  def readme(base: File): File = base / "README.md"
+  def license(base: File): File = base / "LICENSE"
+  def examples(base: File): File = base / "examples"
   val zipPath = TaskKey[File]("zip-path", "path to dist zip file")
   val dist = TaskKey[File]("dist", "creates a distributable zip file")
 }

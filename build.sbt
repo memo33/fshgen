@@ -22,17 +22,11 @@ autoAPIMappings := true
 
 zipPath <<= (target, name, version) map { (t: File, n, v) => t / s"${n}-${v}.zip" }
 
-readmePath <<= (baseDirectory) map { (b: File) => b / "README.md" }
-
-licensePath <<= (baseDirectory) map { (b: File) => b / "LICENSE" }
-
-examplesPath <<= (baseDirectory) map { (b: File) => b / "examples" }
-
-dist <<= (assembly in Compile, readmePath, licensePath, examplesPath, zipPath, streams) map {
-  (fatjar: File, readme: File, license: File, examples: File, out: File, ts: TaskStreams) =>
-    val inputs: Seq[(File,String)] = Seq(fatjar, readme, license) x Path.flat
-    val exampleImages: Seq[(File, String)] = examples.listFiles.toSeq x Path.flatRebase("examples")
-    IO.zip(inputs ++ exampleImages, out)
+dist <<= (assembly in Compile, baseDirectory, zipPath, streams) map {
+  (fatjar: File, base: File, out: File, ts: TaskStreams) =>
+    val inputs: Seq[(File,String)] = Seq(fatjar, readme(base), license(base)) x Path.flat
+    val images: Seq[(File, String)] = (examples(base) * "*.png").get x Path.relativeTo(base)
+    IO.zip(inputs ++ images, out)
     ts.log.info("Created zip archive at " + out.toString)
     out
 }
