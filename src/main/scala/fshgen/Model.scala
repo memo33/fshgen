@@ -126,7 +126,7 @@ trait FileMatching { this: Model =>
           applyEmbedBackground(combineImageWithAlpha(combinedLayers, alphaOpt.get))
         }
         val sidewalkTextures = sidewalkAlphaOpt.toList.flatMap { alpha =>
-          grass.map(g => combineImageWithAlpha(embedBackground(combinedLayers, g), alpha))
+          grass.map(g => killInvisibleBackground(combineImageWithAlpha(embedBackgroundWhereTransparent(combinedLayers, g), alpha)))
         }
         (mainTexture :: sidewalkTextures).zipWithIndex flatMap { case (img, i) =>
           buildFshs(img, buildTgi(id + i * 0x10), if (conf.attachName && i == 0) Some(fileStem(srcFiles(id).head)) else None)
@@ -158,6 +158,22 @@ trait Import extends FileMatching { this: Model =>
         ((p.green & 0xff) * a + (q.green & 0xff) * (255 - a)) / 255,
         ((p.blue  & 0xff) * a + (q.blue  & 0xff) * (255 - a)) / 255,
         a)
+    }
+  }
+
+  def embedBackgroundWhereTransparent(img: Image[RGBA], bg: Image[RGBA]): Image[RGBA] = new ProxyImage(img) {
+    require(img.width == bg.width && img.height == bg.height)
+    def apply(x: Int, y: Int): RGBA = {
+      val p = img(x, y); val a = p.alpha & 0xff
+      if (a != 0) RGBA(p.i | 0xff000000)
+      else RGBA(bg(x, y).i | 0xff000000)
+    }
+  }
+
+  def killInvisibleBackground(img: Image[RGBA]): Image[RGBA] = new ProxyImage(img) {
+    def apply(x: Int, y: Int): RGBA = {
+      val p = img(x, y)
+      if (p.alpha != 0) p else RGBA(0)
     }
   }
 
