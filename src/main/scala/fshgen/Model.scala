@@ -71,13 +71,18 @@ trait FileMatching { this: Model =>
         destroyed = true
       }
     }
-    lazy val subimages: Stream[Image[RGBA]] = for {
-      yOff <- (0 until image.height by conf.sliceWidth).toStream
-      xOff <- 0 until image.width by conf.sliceHeight
-    } yield new Image[RGBA] {
-      def width = conf.sliceWidth
-      def height = conf.sliceHeight
-      def apply(x: Int, y: Int): RGBA = image(xOff + x, yOff + y)
+    lazy val subimages: Stream[Image[RGBA]] = {
+      require(image.height % conf.sliceHeight == 0 && image.width % conf.sliceWidth == 0,
+        s"dimensions (width ${image.width}, height ${image.height}) of file $file are not" +
+        s"multiples of slice width (${conf.sliceWidth}) and height (${conf.sliceHeight})")
+      for {
+        yOff <- (0 until image.height by conf.sliceWidth).toStream
+        xOff <- 0 until image.width by conf.sliceHeight
+      } yield new Image[RGBA] {
+        def width = conf.sliceWidth
+        def height = conf.sliceHeight
+        def apply(x: Int, y: Int): RGBA = image(xOff + x, yOff + y)
+      }
     }
   }
 
