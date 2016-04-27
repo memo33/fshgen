@@ -4,9 +4,9 @@ name := "fshgen"
 
 organization := "com.github.memo33"
 
-version := "0.1.2"
+version := "0.1.3"
 
-scalaVersion := "2.11.2"
+scalaVersion := "2.11.8"
 
 scalacOptions ++= Seq(
   "-unchecked",
@@ -58,4 +58,4 @@ libraryDependencies += "com.github.scopt" %% "scopt" % "3.2.0"
 
 resolvers += "memo33-gdrive-repo" at "https://googledrive.com/host/0B9r6o2oTyY34ZVc4SFBWMV9yb0E/repo/releases/"
 
-libraryDependencies += "com.github.memo33" %% "scdbpf" % "0.1.4"
+libraryDependencies += "com.github.memo33" %% "scdbpf" % "0.1.6"

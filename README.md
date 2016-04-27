@@ -11,6 +11,12 @@ are:
 - on-the-fly S3D-darkening and brightening as per the color curves
 
 
+ Download
+----------
+
+Download at https://www.dropbox.com/sh/dx40oit1lgdey1v/AADAIzFzMKVw6PLQI83nfQLQa?dl=0
+
+
  Requirements
 --------------
 
@@ -154,6 +160,14 @@ If one of the IDs(-Rot—Flip) (preferrably the last one) is suffixed by
 (optional). If one of the IDs is followed by `_b` or `_balpha`, the entire
 image is considered to be the alpha mask for sidewalk textures (optional).
 If and only if a sidewalk alpha mask is found, sidewalk textures are generated.
+
+
+ Compiling
+-----------
+
+Compiling this program requires adding resources from previous version.
+Use `sbt dist` to create a full distribution zip file. Alternatively, use
+`sbt pack` to create binaries.
 
 
  Contact and Support

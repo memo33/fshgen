@@ -242,8 +242,9 @@ object Main extends App {
     val model = new Model(conf)
     conf.mode match {
       case Mode.Import =>
-        val entries = model.collectImages()
         import rapture.core.strategy.throwExceptions
+        import concurrent.ExecutionContext.Implicits.global
+        val entries = ParItr.map(model.collectImages().iterator)(_.toRawEntry)
         if (!conf.append || !conf.outFile.exists) {
           DbpfFile.write(entries, conf.outFile)
         } else {

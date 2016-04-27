@@ -292,7 +292,7 @@ trait Export { this: Model =>
   def export(): Unit = {
     import rapture.core.strategy.throwExceptions
     val singleFile = conf.inputFiles.lengthCompare(1) <= 0
-    for {
+    val iter = for {
       file <- if (singleFile) conf.inputFiles.iterator else Progressor(conf.inputFiles)
       dbpf = DbpfFile.read(file)
       e <- if (singleFile) Progressor(dbpf.entries) else dbpf.entries
@@ -308,8 +308,10 @@ trait Export { this: Model =>
         (if (fsh.elements.tail.nonEmpty) "_" + i else "") +
         (if (elem.images.tail.nonEmpty) "_" + j else "")
       target = new File(conf.outFile, name + ".png") if conf.force || !target.exists
-    } {
-      ImageIO.write(img, "png", target)
-    }
+    } yield (img, target)
+    import concurrent.ExecutionContext.Implicits.global
+    ParItr.map(iter) {
+      case (img, target) => ImageIO.write(img, "png", target)
+    } foreach { _ => /*consume*/ }
   }
 }
