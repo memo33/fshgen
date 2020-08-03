@@ -305,7 +305,7 @@ trait Export { this: Model =>
         if (!conf.alphaSeparate) Seq((image, hexId))
         else Seq((killAlpha(image), hexId), (onlyAlpha(image), hexId + "_a"))
       name = prefix +
-        (if (fsh.elements.tail.nonEmpty) "_" + i else "") +
+        (if (fsh.elements.lengthCompare(1) > 0) "_" + i else "") +
         (if (elem.images.tail.nonEmpty) "_" + j else "")
       target = new File(conf.outFile, name + ".png") if conf.force || !target.exists
     } yield (img, target)

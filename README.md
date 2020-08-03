@@ -1,5 +1,5 @@
- fshgen 0.1.2
-==============
+ fshgen
+========
 
 A command line tool for converting FSH files back and forth. Among the features
 are:
