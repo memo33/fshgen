@@ -1,6 +1,8 @@
  fshgen
 ========
 
+[![Build Status](https://travis-ci.org/memo33/fshgen.svg?branch=master)](https://travis-ci.org/memo33/fshgen)
+
 A command line tool for converting FSH files back and forth. Among the features
 are:
 
