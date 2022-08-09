@@ -1,12 +1,10 @@
-import AssemblyKeys._
-
 name := "fshgen"
 
 organization := "com.github.memo33"
 
-version := "0.1.3"
+version := "0.1.4-SNAPSHOT"
 
-scalaVersion := "2.11.8"
+scalaVersion := "2.11.12"
 
 scalacOptions ++= Seq(
   "-unchecked",
@@ -20,30 +18,26 @@ scalacOptions ++= Seq(
 autoAPIMappings := true
 
 
-zipPath <<= (target, name, version) map { (t: File, n, v) => t / s"${n}-${v}.zip" }
+val zipPath = TaskKey[File]("zip-path", "path to dist zip file")
+val dist = TaskKey[File]("dist", "creates a distributable zip file")
+zipPath := target.value / s"${name.value}-${version.value}.zip"
 
-dist <<= (assembly in Compile, baseDirectory, zipPath, streams) map {
-  (fatjar: File, base: File, out: File, ts: TaskStreams) =>
-    val inputs: Seq[(File,String)] = Seq(fatjar, readme(base), license(base)) x Path.flat
-    val images: Seq[(File, String)] = (examples(base) * "*.png").get x Path.relativeTo(base)
-    IO.zip(inputs ++ images, out)
-    ts.log.info("Created zip archive at " + out.toString)
-    out
+// create a distributable zip file with `sbt zip` (containing the large jar)
+dist := {
+  val fatjar: File = (Compile / assembly).value
+  val inputs: Seq[(File, String)] = Seq(fatjar, (baseDirectory.value / "README.md"), (baseDirectory.value / "LICENSE")) pair Path.flat
+  val images: Seq[(File, String)] = ((baseDirectory.value / "examples") * "*.png").get pair Path.relativeTo(baseDirectory.value) // TODO
+  IO.zip(inputs ++ images, zipPath.value, time = None)
+  streams.value.log.info("Created zip archive at " + zipPath.value.toString)
+  zipPath.value
 }
 
 
-packSettings
+// Create a large executable jar with `sbt assembly`.
+assembly / assemblyJarName := s"${name.value}-${version.value}.jar"
 
-packMain := Map(s"${name.value}-${version.value}" -> "fshgen.Main")
+assembly / mainClass := Some("fshgen.Main")
 
-packJvmOpts := Map(s"${name.value}-${version.value}" -> Seq("-Djava.awt.headless=true"))
-
-
-assemblySettings
-
-jarName in assembly := s"${name.value}-${version.value}.jar"
-
-mainClass in assembly := Some("fshgen.Main")
 
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "2.1.5" % "test"
@@ -56,8 +50,18 @@ resolvers += Resolver.sonatypeRepo("public")
 libraryDependencies += "com.github.scopt" %% "scopt" % "3.2.0"
 
 
-resolvers += "stephenjudkins-bintray" at "https://dl.bintray.com/stephenjudkins/maven"
+libraryDependencies += "com.jsuereth" %% "scala-arm" % "1.4"
 
-resolvers += "memo33-bintray" at "https://dl.bintray.com/memo33/maven"
+libraryDependencies += "org.parboiled" %% "parboiled-scala" % "1.1.6"
 
-libraryDependencies += "com.github.memo33" %% "scdbpf" % "0.1.7"
+libraryDependencies += "com.propensive" %% "rapture-io" % "0.9.1"
+
+libraryDependencies += "com.propensive" %% "rapture-core" % "0.9.0"
+
+libraryDependencies += "ps.tricerato" %% "pureimage" % "0.1.1" from "https://github.com/memo33/scdbpf/releases/download/v0.1.7/pureimage_2.11-0.1.1.jar"
+
+libraryDependencies += "com.github.memo33" %% "scala-unsigned" % "0.1.3" from "https://github.com/memo33/scala-unsigned/releases/download/v0.1.3/scala-unsigned_2.11-0.1.3.jar"
+
+libraryDependencies += "com.github.memo33" % "jsquish" % "2.0.1" from "https://github.com/memo33/jsquish/releases/download/v2.0.1/jsquish-2.0.1.jar"
+
+libraryDependencies += "com.github.memo33" %% "scdbpf" % "0.1.7" from "https://github.com/memo33/scdbpf/releases/download/v0.1.7/scdbpf_2.11-0.1.7.jar"
