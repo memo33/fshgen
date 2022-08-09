@@ -2,7 +2,7 @@ name := "fshgen"
 
 organization := "com.github.memo33"
 
-version := "0.1.4-SNAPSHOT"
+version := "0.1.4"
 
 scalaVersion := "2.11.12"
 
@@ -13,7 +13,7 @@ scalacOptions ++= Seq(
   //"-Yinline-warnings",
   "-optimize",
   "-encoding", "UTF-8",
-  "-target:jvm-1.6")
+  "-target:jvm-1.8")
 
 autoAPIMappings := true
 

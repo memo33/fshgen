@@ -114,19 +114,21 @@ trait FileMatching { this: Model =>
       val colorLayers: List[Image[RGBA]] =
         layersWithContexts.collect { case (img, context) if context.isColor => img } (scala.collection.breakOut)
       val result = if (colorLayers.nonEmpty) {
-        val combinedLayers = colorLayers.tail.foldLeft(colorLayers.head) {
+        val combinedLayers: Image[RGBA] = colorLayers.tail.foldLeft(colorLayers.head) {
           case (bottom, top) => overlay(top, bottom)
         }
         val alphaOpt = layersWithContexts find (_._2.isAlpha) map (x => imageAsAlpha(x._1))
         val sidewalkAlphaOpt = layersWithContexts find (_._2.isSidewalkAlpha) map (x => imageAsAlpha(x._1))
 
-        val mainTexture = if (alphaOpt.isEmpty) {
+        val mainTexture: Image[RGBA] = if (alphaOpt.isEmpty) {
           applyEmbedBackground(combinedLayers)
         } else {
           applyEmbedBackground(combineImageWithAlpha(combinedLayers, alphaOpt.get))
         }
         val sidewalkTextures = sidewalkAlphaOpt.toList.flatMap { alpha =>
-          grass.map(g => killInvisibleBackground(combineImageWithAlpha(embedBackgroundWhereTransparent(combinedLayers, g), alpha)))
+          // grass.map(g => killInvisibleBackground(combineImageWithAlpha(embedBackgroundWhereTransparent(combinedLayers, g), alpha)))
+          // The following should better handle semitransparent pixels between overlay and grass, avoiding black out.
+          grass.map(g => killInvisibleBackground(applyEmbedBackground(combineImageWithAlpha(overlay(combinedLayers, g), alpha))))
         }
         (mainTexture :: sidewalkTextures).zipWithIndex flatMap { case (img, i) =>
           buildFshs(img, buildTgi(id + i * 0x10), if (conf.attachName && i == 0) Some(fileStem(srcFiles(id).head)) else None)
