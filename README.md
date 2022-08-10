@@ -14,13 +14,14 @@ are:
  Download
 ----------
 
-Download at https://www.dropbox.com/sh/dx40oit1lgdey1v/AADAIzFzMKVw6PLQI83nfQLQa?dl=0
+The current version is available under GitHub releases.
+Older versions are available at https://www.dropbox.com/sh/dx40oit1lgdey1v/AADAIzFzMKVw6PLQI83nfQLQa?dl=0
 
 
  Requirements
 --------------
 
-This program requires Java 1.6 or later.
+This program requires Java 1.8 or later.
 
 
  Installation
