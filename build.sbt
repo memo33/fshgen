@@ -2,7 +2,7 @@ name := "fshgen"
 
 organization := "com.github.memo33"
 
-version := "0.1.4"
+version := "0.1.5"
 
 scalaVersion := "2.11.12"
 
@@ -64,4 +64,4 @@ libraryDependencies += "com.github.memo33" %% "scala-unsigned" % "0.1.3" from "h
 
 libraryDependencies += "com.github.memo33" % "jsquish" % "2.0.1" from "https://github.com/memo33/jsquish/releases/download/v2.0.1/jsquish-2.0.1.jar"
 
-libraryDependencies += "com.github.memo33" %% "scdbpf" % "0.1.7" from "https://github.com/memo33/scdbpf/releases/download/v0.1.7/scdbpf_2.11-0.1.7.jar"
+libraryDependencies += "com.github.memo33" %% "scdbpf" % "0.1.12" from "https://github.com/memo33/scdbpf/releases/download/v0.1.12/scdbpf_2.11.jar"
