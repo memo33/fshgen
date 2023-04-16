@@ -1,7 +1,7 @@
 package fshgen
 
-import scdbpf.DbpfUtil._, RotFlip._
-import ps.tricerato.pureimage.Image
+import io.github.memo33.scdbpf.DbpfUtil._, RotFlip._
+import io.github.memo33.scdbpf.compat.Image
 
 abstract class ProxyImage[A](img: Image[A]) extends Image[A] {
   def height = img.height

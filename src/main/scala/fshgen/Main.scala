@@ -3,7 +3,7 @@ package fshgen
 import scala.util.matching.Regex, Regex.Match
 import java.util.regex.Pattern
 import java.io.File
-import scdbpf._, DbpfUtil._, RotFlip._
+import io.github.memo33.scdbpf._, DbpfUtil._, RotFlip._
 
 
 object Mode extends Enumeration {
@@ -242,7 +242,7 @@ object Main extends App {
     val model = new Model(conf)
     conf.mode match {
       case Mode.Import =>
-        import rapture.core.strategy.throwExceptions
+        import io.github.memo33.scdbpf.strategy.throwExceptions
         import concurrent.ExecutionContext.Implicits.global
         val entries = ParItr.map(model.collectImages().iterator)(_.toRawEntry)
         if (!conf.append || !conf.outFile.exists) {

@@ -1,6 +1,6 @@
 package fshgen
 
-import ps.tricerato.pureimage.{Image, RGBA}
+import io.github.memo33.scdbpf.compat.{Image, RGBA}
 
 object Curves {
 

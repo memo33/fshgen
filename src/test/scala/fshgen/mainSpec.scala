@@ -2,7 +2,7 @@ package fshgen
 
 import org.scalatest.{WordSpec, Matchers}
 import Config.IdContext
-import scdbpf.DbpfUtil._, RotFlip._
+import io.github.memo33.scdbpf.DbpfUtil._, RotFlip._
 
 class MainSpec extends WordSpec with Matchers {
 

@@ -1,8 +1,8 @@
 package fshgen
 
-import scdbpf._, Fsh._, DbpfUtil._, RotFlip._
+import io.github.memo33.scdbpf._, Fsh._, DbpfUtil._, RotFlip._
 import java.io.File
-import ps.tricerato.pureimage.{Image, RGBA, Gray}
+import io.github.memo33.scdbpf.compat.{Image, RGBA, Gray}
 import java.awt.image.BufferedImage
 import scala.util.matching.Regex
 import com.mortennobel.imagescaling.ResampleOp
@@ -292,7 +292,7 @@ trait Export { this: Model =>
   }
 
   def export(): Unit = {
-    import rapture.core.strategy.throwExceptions
+    import io.github.memo33.scdbpf.strategy.throwExceptions
     val singleFile = conf.inputFiles.lengthCompare(1) <= 0
     val iter = for {
       file <- if (singleFile) conf.inputFiles.iterator else Progressor(conf.inputFiles)
