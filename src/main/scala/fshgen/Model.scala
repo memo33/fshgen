@@ -2,7 +2,7 @@ package fshgen
 
 import scdbpf._, Fsh._, DbpfUtil._, RotFlip._
 import java.io.File
-import ps.tricerato.pureimage._
+import ps.tricerato.pureimage.{Image, RGBA, Gray}
 import java.awt.image.BufferedImage
 import scala.util.matching.Regex
 import com.mortennobel.imagescaling.ResampleOp

@@ -1,7 +1,7 @@
 package fshgen
 
 import org.scalatest.{WordSpec, Matchers}
-import ps.tricerato.pureimage._
+import ps.tricerato.pureimage.{Image}
 import scdbpf._, DbpfUtil._, RotFlip._
 
 class ImagesSpec extends WordSpec with Matchers {

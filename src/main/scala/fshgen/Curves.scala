@@ -1,6 +1,6 @@
 package fshgen
 
-import ps.tricerato.pureimage._
+import ps.tricerato.pureimage.{Image, RGBA}
 
 object Curves {
 
