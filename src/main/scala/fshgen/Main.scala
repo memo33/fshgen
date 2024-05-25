@@ -67,7 +67,7 @@ object Config {
     }
     def extractLastId: Option[(Int, RotFlip)] =
       matches.view.reverse.filter(_.group(AbsId) != null).headOption map { m =>
-        (Integer.parseInt(m.group(AbsId), 16), extractRF(m, R0F0))
+        (java.lang.Long.parseLong(m.group(AbsId), 16).toInt, extractRF(m, R0F0))
       }
     lazy val extractAllIds: Seq[(Int, RotFlip)] = {
       val buf = new scala.collection.mutable.ListBuffer[(Int, RotFlip)]()
@@ -81,7 +81,7 @@ object Config {
           buf += res
           if (id == 0) lastAbs else res
         } else {
-          val id = lastAbsId + Integer.parseInt(signString + relIdString, 16)
+          val id = lastAbsId + java.lang.Long.parseLong(signString + relIdString, 16).toInt
           buf += id -> extractRF(m, lastAbsRF)
           lastAbs
         }
