@@ -15,6 +15,14 @@ scalacOptions ++= Seq(
   "-encoding", "UTF-8",
   "-release:8")
 
+// make build info available in source files
+lazy val root = (project in file("."))
+  .enablePlugins(BuildInfoPlugin)
+  .settings(
+    buildInfoKeys := Seq[BuildInfoKey](name, organization, version, scalaVersion, sbtVersion, licenses),
+    buildInfoPackage := "fshgen"
+  )
+
 autoAPIMappings := true
 
 
