@@ -1,4 +1,4 @@
-package fshgen
+package io.github.memo33.fshgen
 
 import scala.concurrent.{ ExecutionContext, Future, Await }
 import scala.concurrent.duration.Duration.Inf

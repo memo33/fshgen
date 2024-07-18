@@ -1,4 +1,4 @@
-package fshgen
+package io.github.memo33.fshgen
 
 import io.github.memo33.scdbpf.DbpfUtil._, RotFlip._
 import io.github.memo33.scdbpf.compat.Image

@@ -1,4 +1,4 @@
-package fshgen
+package io.github.memo33.fshgen
 
 import scala.util.matching.Regex, Regex.Match
 import java.util.regex.Pattern

@@ -1,4 +1,4 @@
-package fshgen
+package io.github.memo33.fshgen
 
 import io.github.memo33.scdbpf._, Fsh._, DbpfUtil._, RotFlip._
 import java.io.File

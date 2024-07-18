@@ -1,6 +1,6 @@
 name := "fshgen"
 
-organization := "com.github.memo33"
+organization := "io.github.memo33"
 
 version := "0.1.6-SNAPSHOT"
 
@@ -20,7 +20,7 @@ lazy val root = (project in file("."))
   .enablePlugins(BuildInfoPlugin)
   .settings(
     buildInfoKeys := Seq[BuildInfoKey](name, organization, version, scalaVersion, sbtVersion, licenses),
-    buildInfoPackage := "fshgen"
+    buildInfoPackage := "io.github.memo33.fshgen"
   )
 
 autoAPIMappings := true
@@ -44,7 +44,7 @@ dist := {
 // Create a large executable jar with `sbt assembly`.
 assembly / assemblyJarName := s"${name.value}-${version.value}.jar"
 
-assembly / mainClass := Some("fshgen.Main")
+assembly / mainClass := Some("io.github.memo33.fshgen.Main")
 
 
 
