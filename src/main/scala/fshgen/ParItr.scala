@@ -1,6 +1,6 @@
 package fshgen
 
-import scala.concurrent.{ ExecutionContext, future, Future, Await }
+import scala.concurrent.{ ExecutionContext, Future, Await }
 import scala.concurrent.duration.Duration.Inf
 import java.util.concurrent.{ BlockingQueue, Executors, ArrayBlockingQueue }
 

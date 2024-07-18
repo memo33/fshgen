@@ -8,7 +8,7 @@ import scala.util.matching.Regex
 import com.mortennobel.imagescaling.ResampleOp
 import javax.imageio.ImageIO
 import scala.collection.mutable
-import scala.collection.SortedSet
+import scala.collection.immutable.SortedSet
 
 import scala.language.implicitConversions
 import Experimental.bufferedImageAsImage
@@ -40,10 +40,10 @@ class Model(val conf: Config) extends Import with Export {
         var count = 0
         def hasNext = it.hasNext
         private[this] def points(n: Int) = n * 80 / num
-        def next = {
+        def next() = {
           count += 1
           for (_ <- points(count-1) until points(count)) print(".")
-          it.next
+          it.next()
         }
       }
     }
@@ -71,12 +71,12 @@ trait FileMatching { this: Model =>
         destroyed = true
       }
     }
-    lazy val subimages: Stream[Image[RGBA]] = {
+    lazy val subimages: LazyList[Image[RGBA]] = {
       require(image.height % conf.sliceHeight == 0 && image.width % conf.sliceWidth == 0,
         s"dimensions (width ${image.width}, height ${image.height}) of file $file are not" +
         s"multiples of slice width (${conf.sliceWidth}) and height (${conf.sliceHeight})")
       for {
-        yOff <- (0 until image.height by conf.sliceWidth).toStream
+        yOff <- (0 until image.height by conf.sliceWidth).to(LazyList)
         xOff <- 0 until image.width by conf.sliceHeight
       } yield new Image[RGBA] {
         def width = conf.sliceWidth
@@ -87,8 +87,8 @@ trait FileMatching { this: Model =>
   }
 
   private lazy val contexts: Map[File, IdContext] =
-    conf.inputFiles.map(f => f -> new IdContext(f.getName))(scala.collection.breakOut)
-  private lazy val ids: Seq[Int] = (conf.inputFiles map contexts flatMap (_.extractAllIds) map (_._1)).distinct
+    conf.inputFiles.iterator.map(f => f -> new IdContext(f.getName)).toMap
+  private lazy val ids: Seq[Int] = (conf.inputFiles.map(contexts).flatMap(_.extractAllIds).map(_._1)).distinct
   private lazy val filenameOrdering = Ordering.by[File, String](fileStem(_).toLowerCase)
   private lazy val srcFiles: scala.collection.Map[Int, SortedSet[File]] = {
     val m = mutable.Map.empty[Int, SortedSet[File]]
@@ -112,7 +112,7 @@ trait FileMatching { this: Model =>
         }
       // TODO processing here, stack layers, add alphas, etc.
       val colorLayers: List[Image[RGBA]] =
-        layersWithContexts.collect { case (img, context) if context.isColor => img } (scala.collection.breakOut)
+        layersWithContexts.iterator.collect { case (img, context) if context.isColor => img }.toList
       val result = if (colorLayers.nonEmpty) {
         val combinedLayers: Image[RGBA] = colorLayers.tail.foldLeft(colorLayers.head) {
           case (bottom, top) => overlay(top, bottom)
@@ -231,7 +231,7 @@ trait Import extends FileMatching { this: Model =>
     } else {
       val descendingTgis = Iterator.iterate(tgi)(x => x.copy(iid = x.iid-1))
       val mipFshs = (if (conf.hd) mips.tail else mips) map (img => Fsh(Seq(new FshElement(Iterable(img), conf.fshFormat)), conf.fshDirId))
-      (Iterable(fsh) ++ mipFshs) map (f => BufferedEntry(descendingTgis.next, f, compressed = true))
+      (Iterable(fsh) ++ mipFshs).map(f => BufferedEntry(descendingTgis.next(), f, compressed = true))
     }
   }
 
@@ -250,7 +250,7 @@ trait Import extends FileMatching { this: Model =>
       buildSlicedEntries
     } else if (!conf.alphaSeparate) {
       Progressor(conf.inputFiles).flatMap { f =>
-        val (id, rf) = new IdContext(f.getName).extractLastId getOrElse (defaultId.next, R0F0)
+        val (id, rf) = new IdContext(f.getName).extractLastId.getOrElse(defaultId.next(), R0F0)
         val img = DihImage(applyEmbedBackground(ImageIO.read(f)), rf)
         buildFshs(img, buildTgi(id), if (conf.attachName) Some(fileStem(f)) else None)
       }
@@ -258,7 +258,7 @@ trait Import extends FileMatching { this: Model =>
       val alphas, colors = scala.collection.mutable.Map.empty[Int, (File, RotFlip)]
       for (f <- conf.inputFiles) {
         val idContext = new IdContext(f.getName)
-        val (id, rf) = idContext.extractLastId getOrElse (defaultId.next, R0F0)
+        val (id, rf) = idContext.extractLastId.getOrElse(defaultId.next(), R0F0)
         (if (idContext.isAlpha) alphas else colors)(id) = f -> rf
       }
       Progressor(colors).flatMap { case (id, (colFile, colRf)) =>
@@ -272,7 +272,7 @@ trait Import extends FileMatching { this: Model =>
         buildFshs(combined, buildTgi(id), if (conf.attachName) Some(fileStem(colFile)) else None)
       }
     }
-    entries.toIterable
+    entries.to(Iterable)
   }
 }
 
@@ -291,18 +291,18 @@ trait Export { this: Model =>
     }
   }
 
-  def export(): Unit = {
+  def `export`(): Unit = {
     import io.github.memo33.scdbpf.strategy.throwExceptions
     val singleFile = conf.inputFiles.lengthCompare(1) <= 0
     val iter = for {
       file <- if (singleFile) conf.inputFiles.iterator else Progressor(conf.inputFiles)
       dbpf = DbpfFile.read(file)
-      e <- if (singleFile) Progressor(dbpf.entries) else dbpf.entries
+      e <- if (singleFile) Progressor(dbpf.entries) else dbpf.entries.iterator
       if e.tgi matches Tgi.Fsh
       hexId = f"${e.tgi.iid}%08x" if conf.iidPattern.matcher(hexId).matches
       fsh = e.toBufferedEntry.convert[Fsh].content
-      (elem, i) <- fsh.elements zip (Stream from 0)
-      (image, j) <- elem.images zip (Stream from 0)
+      (elem, i) <- fsh.elements zip (LazyList.from(0))
+      (image, j) <- elem.images zip (LazyList.from(0))
       (img, prefix) <-
         if (!conf.alphaSeparate) Seq((image, hexId))
         else Seq((killAlpha(image), hexId), (onlyAlpha(image), hexId + "_a"))

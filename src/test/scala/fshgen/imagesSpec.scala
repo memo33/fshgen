@@ -1,10 +1,11 @@
 package fshgen
 
-import org.scalatest.{WordSpec, Matchers}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import io.github.memo33.scdbpf._, DbpfUtil._, RotFlip._
 import io.github.memo33.scdbpf.compat.{Image}
 
-class ImagesSpec extends WordSpec with Matchers {
+class ImagesSpec extends AnyWordSpec with Matchers {
 
   case class SeqImg(pixels: Seq[Int], width: Int) extends Image[Int] {
     def height = pixels.length / width

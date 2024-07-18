@@ -1,9 +1,10 @@
 package fshgen
 
-import org.scalatest.{WordSpec, Matchers}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import Curves._
 
-class CurvesSpec extends WordSpec with Matchers {
+class CurvesSpec extends AnyWordSpec with Matchers {
 
   "Brightening" should {
     "be invertible" in {

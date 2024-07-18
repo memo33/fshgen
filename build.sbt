@@ -4,16 +4,16 @@ organization := "com.github.memo33"
 
 version := "0.1.6-SNAPSHOT"
 
-scalaVersion := "2.11.12"
+scalaVersion := "2.13.14"
 
 scalacOptions ++= Seq(
   "-unchecked",
   "-deprecation",
   "-feature",
   //"-Yinline-warnings",
-  "-optimize",
+  //"-optimize",
   "-encoding", "UTF-8",
-  "-target:jvm-1.8")
+  "-release:8")
 
 autoAPIMappings := true
 
@@ -40,10 +40,10 @@ assembly / mainClass := Some("fshgen.Main")
 
 
 
-libraryDependencies += "org.scalatest" %% "scalatest" % "2.1.5" % "test"
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.15" % "test"
 
 libraryDependencies += "com.mortennobel" % "java-image-scaling" % "0.8.5"
 
-libraryDependencies += "com.github.scopt" %% "scopt" % "3.2.0"
+libraryDependencies += "com.github.scopt" %% "scopt" % "3.7.1"
 
 libraryDependencies += "io.github.memo33" %% "scdbpf" % "0.2.1"
