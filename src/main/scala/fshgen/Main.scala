@@ -60,7 +60,7 @@ object Config {
       matches exists { m => val s = m.group(Alpha); s != null && s.toLowerCase.startsWith("a") }
     def isSidewalkAlpha: Boolean =
       matches exists { m => val s = m.group(Alpha); s != null && s.toLowerCase.startsWith("b") }
-    private[this] def extractRF(m: Match, default: RotFlip): RotFlip = {
+    private def extractRF(m: Match, default: RotFlip): RotFlip = {
       val r = m.group(Rot); val f = m.group(Flip)
       if (r != null & f != null) R0F0 / RotFlip(r.toInt, f.toInt)
       else default
@@ -92,7 +92,7 @@ object Config {
 
 }
 
-object Main extends App {
+object Main {
 
   implicit val fshDirRead: scopt.Read[Fsh.FshDirectoryId] =
     scopt.Read.reads(s => (Fsh.FshDirectoryId withName s).asInstanceOf[Fsh.FshDirectoryId])
@@ -238,25 +238,27 @@ object Main extends App {
     config.copy(inputFiles = existingFiles)
   }
 
-  parser.parse(args, Config()) map collectInputFiles map { conf =>
-    val model = new Model(conf)
-    conf.mode match {
-      case Mode.Import =>
-        import io.github.memo33.scdbpf.strategy.throwExceptions
-        import concurrent.ExecutionContext.Implicits.global
-        val entries = ParItr.map(model.collectImages().iterator)(_.toRawEntry)
-        if (!conf.append || !conf.outFile.exists) {
-          DbpfFile.write(entries, conf.outFile)
-        } else {
-          val dbpf = DbpfFile.read(conf.outFile)
-          dbpf.write(dbpf.entries.to(LazyList) ++ entries) // lazy evaluation
-        }
-      case Mode.Export =>
-        model.`export`()
+  def main(args: Array[String]): Unit = {
+    parser.parse(args, Config()) map collectInputFiles map { conf =>
+      val model = new Model(conf)
+      conf.mode match {
+        case Mode.Import =>
+          import io.github.memo33.scdbpf.strategy.throwExceptions
+          import concurrent.ExecutionContext.Implicits.global
+          val entries = ParItr.map(model.collectImages().iterator)(_.toRawEntry)
+          if (!conf.append || !conf.outFile.exists) {
+            DbpfFile.write(entries, conf.outFile)
+          } else {
+            val dbpf = DbpfFile.read(conf.outFile)
+            dbpf.write(dbpf.entries.to(LazyList) ++ entries) // lazy evaluation
+          }
+        case Mode.Export =>
+          model.`export`()
+      }
+      if (!conf.silent) println() // complete the line started by progressor
+      println("SUCCESS!")
+    } getOrElse {
+      println("FAILED!")
     }
-    if (!conf.silent) println() // complete the line started by progressor
-    println("SUCCESS!")
-  } getOrElse {
-    println("FAILED!")
   }
 }

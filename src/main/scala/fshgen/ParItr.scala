@@ -16,8 +16,8 @@ object ParItr {
     }
     new Iterator[B] {
 
-      private[this] var fopt: Option[Future[B]] = None
-      private[this] var alive = true
+      private var fopt: Option[Future[B]] = None
+      private var alive = true
 
       override def next() =
         if (hasNext) { val v = Await.result(fopt.get, Inf); fopt = None; v }

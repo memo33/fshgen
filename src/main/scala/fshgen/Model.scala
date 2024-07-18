@@ -39,7 +39,7 @@ class Model(val conf: Config) extends Import with Export {
       new scala.collection.AbstractIterator[A] {
         var count = 0
         def hasNext = it.hasNext
-        private[this] def points(n: Int) = n * 80 / num
+        private def points(n: Int) = n * 80 / num
         def next() = {
           count += 1
           for (_ <- points(count-1) until points(count)) print(".")
@@ -53,8 +53,8 @@ class Model(val conf: Config) extends Import with Export {
 trait FileMatching { this: Model =>
 
   private class LazyImageHolder(file: File, context: IdContext) {
-    private[this] var ids: Set[Int] = context.extractAllIds.map(_._1).toSet - 0
-    private[this] var img: Image[RGBA] = null
+    private var ids: Set[Int] = context.extractAllIds.map(_._1).toSet - 0
+    private var img: Image[RGBA] = null
     var destroyed = false
 
     def image: Image[RGBA] = {

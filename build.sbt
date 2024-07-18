@@ -4,7 +4,7 @@ organization := "io.github.memo33"
 
 version := "0.1.6-SNAPSHOT"
 
-scalaVersion := "2.13.14"
+scalaVersion := "3.4.2"
 
 scalacOptions ++= Seq(
   "-unchecked",
@@ -52,6 +52,6 @@ libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.15" % "test"
 
 libraryDependencies += "com.mortennobel" % "java-image-scaling" % "0.8.5"
 
-libraryDependencies += "com.github.scopt" %% "scopt" % "3.7.1"
+libraryDependencies += "com.github.scopt" %% "scopt" % "4.1.0"
 
-libraryDependencies += "io.github.memo33" %% "scdbpf" % "0.2.1"
+libraryDependencies += "io.github.memo33" %% "scdbpf" % "0.2.1" cross CrossVersion.for3Use2_13
