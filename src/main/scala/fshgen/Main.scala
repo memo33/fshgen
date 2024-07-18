@@ -26,7 +26,7 @@ case class Config(
   sliceWidth: Int = 128,
   sliceHeight: Int = 128,
   iidOffset: Int = 0,
-  gid: Int = Tgi.FshMisc.gid.get,
+  gid: Option[Int] = None,
   darken: Boolean = false,
   brighten: Boolean = false,
   backgroundBright: Boolean = false,
@@ -36,7 +36,9 @@ case class Config(
   fshDirId: Fsh.FshDirectoryId = Fsh.FshDirectoryId.G264,
   fshFormat: Fsh.FshFormat = Fsh.FshFormat.Dxt3,
   silent: Boolean = false,
-  iidPatternString: String = ".*"
+  iidPatternString: String = ".*",
+  withBatModels: Boolean = false,
+  noFlipV: Boolean = false,
 ) {
   lazy val iidPattern: Pattern = Pattern.compile(iidPatternString, Pattern.CASE_INSENSITIVE)
 }
@@ -108,7 +110,7 @@ object Main {
 
     cmd("import")
       .action { (_, c) => c.copy(mode = Mode.Import) }
-      .text("import PNG/BMP files as FSHs into DBPF dat files")
+      .text("import PNG/BMP files as FSHs (and optionally OBJ files as S3D) into DBPF dat files")
       .children(
         opt[File]('o', "output").required().valueName("<file>").text("output dat file")
           .action { (f, c) => c.copy(outFile = f) }
@@ -147,8 +149,8 @@ object Main {
         opt[Int]('i', "iid-offset").text("offset of IIDs")
           .action { (off, c) => c.copy(iidOffset = off) },
 
-        opt[String]("gid").text(f"alternative GID, defaults to 0x${Tgi.FshMisc.gid.get}%08X")
-          .action { (gid, c) => c.copy(gid = java.lang.Long.decode(gid).toInt) },
+        opt[String]("gid").text(f"alternative GID, defaults to 0x${Tgi.FshMisc.gid.get}%08X for textures and 0x${Tgi.S3dMaxis.gid.get}%08X for models")
+          .action { (gid, c) => c.copy(gid = Some(java.lang.Long.decode(gid).toInt)) },
 
         opt[Unit]('D', "darken").text("darken textures for S3D models")
           .action { (_, c) => c.copy(darken = true) },
@@ -173,6 +175,12 @@ object Main {
 
         opt[Unit]("alpha-separate").text("look for separate alpha files among files")
           .action { (_, c) => c.copy(alphaSeparate = true) },
+
+        opt[Unit]("with-BAT-models").text("convert .obj files to S3D and include them")
+          .action { (_, c) => c.copy(withBatModels = true) },
+
+        opt[Unit]("no-flip-v").text("unless this option is set, direction of v-coordinates is by default reversed upon conversion from OBJ to S3D")
+          .action { (_, c) => c.copy(noFlipV = true) },
 
         opt[Unit]("silent").text("do not indicate the progress")
           .action { (_, c) => c.copy(silent = true) },
@@ -219,6 +227,10 @@ object Main {
           failure("background is applied first and would be brightened additionally, use 'background-dark' instead")
         else if (c.darken && c.backgroundDark)
           failure("background is applied first and would be darkened additionally, use 'background-bright' instead")
+        else if (c.withBatModels && c.slice)
+          failure("options 'with-BAT-models' and 'slice' are incompatible with each other")
+        else if (c.withBatModels && c.alphaSeparate)
+          failure("options 'with-BAT-models' and 'alpha-separate' are incompatible with each other")
         else success
       case Mode.Export => success
       case _ => failure("either 'import' or 'export' command required")
@@ -249,7 +261,7 @@ object Main {
             import io.github.memo33.scdbpf.strategy.throwExceptions
             import concurrent.ExecutionContext.Implicits.global
             val failuresBuilder = Seq.newBuilder[Throwable]
-            val (entriesTry: Iterator[Try[DbpfEntry]], errFuture) = ParItr.map(model.collectImages())(_.toRawEntry)
+            val (entriesTry: Iterator[Try[DbpfEntry]], errFuture) = ParItr.map(model.collectImagesAndModels())(_.toRawEntry)
             val entries: Iterator[DbpfEntry] = entriesTry.flatMap {
               case Success(entry) => Some(entry)
               case Failure(err) => failuresBuilder += err; None

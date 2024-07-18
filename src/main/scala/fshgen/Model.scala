@@ -11,10 +11,104 @@ import scala.collection.mutable
 import scala.collection.immutable.SortedSet
 import scala.util.{Try, Success, Failure}
 import scala.concurrent.Future
+import com.mokiat.data.front.parser.{OBJParser, OBJModel, OBJMesh, OBJDataReference}
 
 import scala.language.implicitConversions
+import scala.jdk.CollectionConverters.IteratorHasAsScala
 import Experimental.bufferedImageAsImage
 import Config.IdContext
+
+trait ObjConversion { this: Model =>
+
+  def readObj(file: File): OBJModel =
+    scala.util.Using.resource(new java.io.FileInputStream(file))((new OBJParser()).parse(_))
+
+  def convertMesh(mesh: OBJMesh, model: OBJModel, matId: Int): (S3d.VertGroup, S3d.IndxGroup, S3d.MatsGroup) = {
+
+    def refToLookup(ref: OBJDataReference): (Int, Int) = (ref.vertexIndex, ref.texCoordIndex)  // this conversion allows to ignore normals index
+
+    val uniqueRefs: IndexedSeq[OBJDataReference] = mesh.getFaces.iterator.asScala
+      .flatMap { face =>
+        require(face.hasTextureCoordinates, "uv-coordinates are required for each face")
+        require(face.hasVertices, "vertices are required for each face")
+        face.getReferences.iterator.asScala
+      }
+      .distinctBy(refToLookup)
+      .distinctBy { ref =>
+        assert(ref.vertexIndex >= 0 && ref.texCoordIndex >= 0)  // -1 if missing
+        (ref.vertexIndex, ref.texCoordIndex)
+      }
+      .toIndexedSeq
+    assert(uniqueRefs.forall(ref => ref.vertexIndex >= 0 && ref.texCoordIndex >= 0))  // -1 if missing, but should not happen due to `hasTextureCoordinates` and `hasVertices`
+
+    val reindexedRefs: Map[(Int, Int), Int] = uniqueRefs.map(refToLookup).zipWithIndex.toMap
+
+    val vg =
+      S3d.VertGroup(uniqueRefs.map { ref =>
+        val v = model.getVertex(ref)
+        val t = model.getTexCoord(ref)
+        S3d.Vert(v.x, v.y, v.z, t.u, if (conf.noFlipV) t.v else 1 - t.v)
+      })
+
+    // Both OBJ and S3D enumerate vertices of a visible face in counter-clockwise order
+    val ig =
+      S3d.IndxGroup(mesh.getFaces.iterator.asScala
+        .flatMap { face =>
+          val refs = face.getReferences
+          require(refs.size == 3, "all polygons should be triangles")
+          refs.iterator.asScala.map(ref => reindexedRefs(refToLookup(ref)))
+        }
+        .toIndexedSeq
+      )
+
+    val mg0 =
+      S3d.defaultMats(S3d.Transparency.Transparent, id = matId, name = Option(mesh.getMaterialName),  // TODO allow parsing ID from name
+        wrapU = S3d.WrapMode.Repeat, wrapV = S3d.WrapMode.Repeat)
+    val mg = mg0.copy(materials = mg0.materials.map(_.copy(magFilter = S3d.MagnifFilter.Nearest, minFilter = S3d.MinifFilter.NearestNoMipmap)))
+
+    (vg, ig, mg)
+  }
+
+  /** This mapping should allow for more than 16 anim groups (for slicing of
+    * large BAT models).
+    */
+  def tgiToMatId(tgi: Tgi, index: Int): Int = {
+    // available bits for sliced tile IDs:
+    // digit 8: 4 bits
+    // digit 7: 2 bits (2 bits rotation)
+    // digit 6: 1 bit (3 bits zoom)
+    // digit 5: (1 bit nightlight) 3 bits
+    require(index >= 0 && index < (1 << (4 + 2 + 1 + 3)), s"model should have fewer than 1024 materials ($index)")  // 1024
+    val offset =
+      ((index & 0x0380) << (3 + 2)) |
+      ((index & 0x0040) << (3 + 2)) |
+      ((index & 0x0030) << 2) |
+      (index & 0x000f)
+    tgi.iid + offset
+  }
+
+  def objToS3d(model: OBJModel, tgi: Tgi): S3d = {
+    val (meshes: IndexedSeq[OBJMesh], names: IndexedSeq[Option[String]]) =
+      model.getObjects.iterator.asScala
+        .flatMap(ob => ob.getMeshes.iterator.asScala.map(mesh => (mesh, Option(ob.getName))))
+        .toIndexedSeq.unzip
+
+    val (vertGroups, indxGroups, matsGroups) =
+      meshes.zipWithIndex.map{ case (mesh, idx) => convertMesh(mesh, model, matId = tgiToMatId(tgi, idx)) }.unzip3
+
+    val primGroups = indxGroups.distinctBy(_.indxs.size).map { ig =>
+      S3d.PrimGroup(IndexedSeq(S3d.Prim(S3d.PrimType.Triangle, firstIndx = 0, numIndxs = ig.indxs.size)))
+    }
+    val primGroupBySize: Map[Int, Int] = primGroups.iterator.zipWithIndex.map{ case (pg, idx) => (pg.prims.head.numIndxs, idx) }.toMap
+
+    val animGroups = (0 until meshes.size).map { j =>
+      S3d.AnimGroup.vipm(j, j, primGroupBySize(indxGroups(j).indxs.size), j, name = names(j))
+    }
+
+    S3d(vertGroups, indxGroups, primGroups, matsGroups, animGroups)
+  }
+
+}
 
 class Model(val conf: Config) extends Import with Export {
 
@@ -143,7 +237,7 @@ trait FileMatching { this: Model =>
   }
 }
 
-trait Import extends FileMatching { this: Model =>
+trait Import extends FileMatching with ObjConversion { this: Model =>
   def imageAsAlpha(img: Image[RGBA]): Image[Gray] = new Image[Gray] {
     def height = img.height; def width = img.width
     def apply(x: Int, y: Int): Gray = {
@@ -249,17 +343,34 @@ trait Import extends FileMatching { this: Model =>
     }
   }
 
-  def buildTgi(id: Int): Tgi = Tgi(Tgi.Fsh.tid.get, conf.gid, id + conf.iidOffset)
+  def isModelFile(file: File): Boolean = {
+    file.getName.toLowerCase.endsWith(".obj")
+  }
 
-  def collectImages(): Iterator[BufferedEntry[Fsh]] = {
+  def isMatFile(file: File): Boolean = {
+    file.getName.toLowerCase.endsWith(".mtl")
+  }
+
+  def buildTgi(id: Int): Tgi = Tgi(Tgi.Fsh.tid.get, conf.gid.orElse(Tgi.FshMisc.gid).get, id + conf.iidOffset)
+  def buildTgiS3d(id: Int): Tgi = Tgi(Tgi.S3d.tid.get, conf.gid.orElse(Tgi.S3dMaxis.gid).get, id)
+
+  def collectImagesAndModels(): Iterator[BufferedEntry[Fsh | S3d]] = {
     val defaultId = Iterator.from(4, 0x100)
     val entries = if (conf.slice) {
       buildSlicedEntries
     } else if (!conf.alphaSeparate) {
       Progressor(conf.inputFiles).flatMap { f =>
         val (id, rf) = new IdContext(f.getName).extractLastId.getOrElse(defaultId.next(), R0F0)
-        val img = DihImage(applyEmbedBackground(ImageIO.read(f)), rf)
-        buildFshs(img, buildTgi(id), if (conf.attachName) Some(fileStem(f)) else None)
+        if (conf.withBatModels && isModelFile(f)) {
+          val tgi = buildTgiS3d(id)
+          val model = objToS3d(readObj(f), tgi)
+          Iterable(BufferedEntry(tgi, model, compressed = true))
+        } else if (conf.withBatModels && isMatFile(f)) {
+          Iterable.empty  // for convenience, ignore redundant .mtl files generated by Blender
+        } else {
+          val img = DihImage(applyEmbedBackground(ImageIO.read(f)), rf)
+          buildFshs(img, buildTgi(id), if (conf.attachName) Some(fileStem(f)) else None)
+        }
       }
     } else {
       val alphas, colors = scala.collection.mutable.Map.empty[Int, (File, RotFlip)]

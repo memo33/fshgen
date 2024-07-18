@@ -1,5 +1,4 @@
- fshgen
-========
+# fshgen
 
 A command line tool for converting FSH files back and forth. Among the features
 are:
@@ -9,23 +8,21 @@ are:
   (export-only) multi-FSHs
 - IID shifts and mipmap creation
 - on-the-fly S3D-darkening and brightening as per the color curves
+- conversion of Wavefront .obj files to S3D
 
 
- Download
-----------
+## Download
 
 The current version is available under GitHub releases.
 Older versions are available at https://www.dropbox.com/sh/dx40oit1lgdey1v/AADAIzFzMKVw6PLQI83nfQLQa?dl=0
 
 
- Requirements
---------------
+## Requirements
 
 This program requires Java 1.8 or later.
 
 
- Installation
---------------
+## Installation
 
 There are many ways to install this program. One way is to extract the jar file
 contained in the zip archive to any permanent location and (assuming a Unix
@@ -38,26 +35,27 @@ that the program is executed from the console, so that no GUI thread needs to be
 started.)
 
 
- Usage
--------
+## Usage
 
-There are two `fshgen` commands: `import` (used for converting png or bmp to FSH
-as DBPF dat file) and `export` (used to export FSH files from a dat file to
-png). See the examples below. To print the usage text, use `fshgen --help`.
+There are two `fshgen` commands: `import` (used for converting .png or .bmp to
+FSH as DBPF dat file or .obj to S3D) and `export` (used to export FSH files
+from a dat file to .png). See the examples below. To print the usage text, use
+`fshgen --help`.
 
 
- Examples
-----------
+## Examples
+
+### Import
 
 The most basic import command is as follows:
 
-    fshgen import -o foobar.dat 12345678.png
+    fshgen import -o output.dat 12345678.png
 
 It takes the one png file, converts it to FSH and saves it in the output file
-foobar.dat. You can specify multiple image files, too, by either listing them
+output.dat. You can specify multiple image files, too, by either listing them
 (space-separated) or using wildcards, such as:
 
-    fshgen import -o foobar.dat 5*.png
+    fshgen import -o output.dat 5*.png
 
 This would convert all png files starting with '5' in the current directory. If
 no image file is specified, the file names will be read from stdin. This is
@@ -65,7 +63,7 @@ useful to interact with other programs or if you have lots of files to import
 (the number of parameters in the above style is limited to about 1000). For
 example:
 
-    find . -name "5*.png" | fshgen import -o foobar.dat
+    find . -name "5*.png" | fshgen import -o output.dat
 
 The `find` command lists all the files matching the pattern in the current
 directorie _and_ subdirectories, which are passed to `fshgen` using the pipe
@@ -92,11 +90,18 @@ descriptive text. Many of the Maxis FSH files have such an attachment.
 
 Therefore, a full import call might look like:
 
-    fshgen import -ma -i 4 --attach-filename -o foobar.dat 5*.png
+    fshgen import -ma -i 4 --attach-filename -o output.dat 5*.png
+
+Additionally the import command allows converting .obj model files to S3D:
+
+    fshgen import -o output.dat --with-BAT-models --format Dxt1 --gid 0xffffffff models*.obj materials*.png
+
+
+### Export
 
 The export command is used as follows:
 
-    fshgen export foobar.dat
+    fshgen export input.dat
 
 This would export all the FSH files from the file (multiple files can be
 specified, too, as with import). It is possible to specify a different output
@@ -104,19 +109,18 @@ directory than the current using `-o`. Force overwriting of existing png files
 using `-f`. You can also specify a (Java-style) regular expression pattern using
 `-p` to match against the (case-insensitive) IID, such as
 
-    fshgen export -p '.*[49ef]' foobar.dat
+    fshgen export -p '.*[49ef]' input.dat
 
 to export only those FSH files with an 8th digit of 4, 9, e or f, or
 
-    fshgen export -p '57.*' foobar.dat
+    fshgen export -p '57.*' input.dat
 
 to export all FSH files with IIDs starting with 57.
 
 Make sure to check `fshgen --help` for all the options.
 
 
- Slicing
----------
+### Slicing
 
 If you pass the `--slice` or `-s` option to the import command, an extensive
 matching process is started that doesn't only allow for automatically slicing
@@ -156,29 +160,20 @@ same FSH file. The layers are processed in alphabetical file name order, such
 that the top most layer needs to have an alphabetically higher name than
 previous occurences of a specific ID (lowercase).
 
-If one of the IDs(-Rot—Flip) (preferrably the last one) is suffixed by
+If one of the IDs(-Rot-Flip) (preferrably the last one) is suffixed by
 `_a` or `_alpha`, the entire image is considered to be an alpha mask
 (optional). If one of the IDs is followed by `_b` or `_balpha`, the entire
 image is considered to be the alpha mask for sidewalk textures (optional).
 If and only if a sidewalk alpha mask is found, sidewalk textures are generated.
 
 
- Compiling
------------
+## Compiling
 
 Compiling this program requires adding resources from previous version.
 Use `sbt dist` to create a full distribution zip file. Alternatively, use
 `sbt pack` to create binaries.
 
 
- Contact and Support
----------------------
-
-Contact the author (memo) at
-[SC4Devotion.com](http://sc4devotion.com).
-
-
- License
----------
+## License
 
 This program is released under the MIT license (see included license file).
