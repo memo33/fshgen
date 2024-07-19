@@ -9,6 +9,7 @@ import com.mortennobel.imagescaling.ResampleOp
 import javax.imageio.ImageIO
 import scala.collection.mutable
 import scala.collection.immutable.SortedSet
+import scala.util.{Try, Success, Failure}
 
 import scala.language.implicitConversions
 import Experimental.bufferedImageAsImage
@@ -244,7 +245,7 @@ trait Import extends FileMatching { this: Model =>
 
   def buildTgi(id: Int): Tgi = Tgi(Tgi.Fsh.tid.get, conf.gid, id + conf.iidOffset)
 
-  def collectImages(): Iterable[BufferedEntry[Fsh]] = {
+  def collectImages(): Iterator[BufferedEntry[Fsh]] = {
     val defaultId = Iterator.from(4, 0x100)
     val entries = if (conf.slice) {
       buildSlicedEntries
@@ -272,7 +273,7 @@ trait Import extends FileMatching { this: Model =>
         buildFshs(combined, buildTgi(id), if (conf.attachName) Some(fileStem(colFile)) else None)
       }
     }
-    entries.to(Iterable)
+    entries
   }
 }
 
@@ -291,7 +292,7 @@ trait Export { this: Model =>
     }
   }
 
-  def `export`(): Unit = {
+  def `export`(): Seq[Throwable] = {
     import io.github.memo33.scdbpf.strategy.throwExceptions
     val singleFile = conf.inputFiles.lengthCompare(1) <= 0
     val iter = for {
@@ -314,6 +315,8 @@ trait Export { this: Model =>
     import concurrent.ExecutionContext.Implicits.global
     ParItr.map(iter) {
       case (img, target) => ImageIO.write(img, "png", target)
-    } foreach { _ => /*consume*/ }
+    }.collect {
+      case Failure(err) => err
+    }.toSeq  // consumes all iterator elements
   }
 }
