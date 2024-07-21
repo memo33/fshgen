@@ -204,7 +204,7 @@ trait Import extends FileMatching { this: Model =>
   }
 
   def combineImageWithAlpha(img: Image[RGBA], alpha: Image[Gray]): Image[RGBA] = new ProxyImage(img) {
-    assert(img.width == alpha.width, img.height == alpha.height)
+    assert(img.width == alpha.width && img.height == alpha.height)
     def apply(x: Int, y: Int): RGBA = RGBA(img(x, y).i & 0x00FFFFFF | alpha(x, y).i << 24)
   }
 
@@ -226,6 +226,11 @@ trait Import extends FileMatching { this: Model =>
     val mips = produceMips(bi) map applyFilter
     val img = applyFilter(bufferedImageAsImage(bi))
     val imgs = Iterable(img) ++ (if (conf.mipsEmbedded) mips else Iterable.empty)
+    if (conf.fshFormat == FshFormat.Dxt1 || conf.fshFormat == FshFormat.Dxt3) {
+      imgs.find(i => i.width % 4 != 0 || i.height % 4 != 0).foreach { i =>
+        throw new UnsupportedOperationException(s"Width and height of DXT-compressed images must be divisible by 4 (size=${i.width}×${i.height}, $tgi)")
+      }
+    }
     val elem = new FshElement(imgs, conf.fshFormat, label)
     val fsh = Fsh(Seq(elem), conf.fshDirId)
     if (!conf.mipsSeparate) {
