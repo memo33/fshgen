@@ -10,6 +10,7 @@ import javax.imageio.ImageIO
 import scala.collection.mutable
 import scala.collection.immutable.SortedSet
 import scala.util.{Try, Success, Failure}
+import scala.concurrent.Future
 
 import scala.language.implicitConversions
 import Experimental.bufferedImageAsImage
@@ -292,7 +293,7 @@ trait Export { this: Model =>
     }
   }
 
-  def `export`(): Seq[Throwable] = {
+  def `export`(): (Seq[Throwable], Future[Unit]) = {
     import io.github.memo33.scdbpf.strategy.throwExceptions
     val singleFile = conf.inputFiles.lengthCompare(1) <= 0
     val iter = for {
@@ -313,10 +314,8 @@ trait Export { this: Model =>
       target = new File(conf.outFile, name + ".png") if conf.force || !target.exists
     } yield (img, target)
     import concurrent.ExecutionContext.Implicits.global
-    ParItr.map(iter) {
-      case (img, target) => ImageIO.write(img, "png", target)
-    }.collect {
-      case Failure(err) => err
-    }.toSeq  // consumes all iterator elements
+    val (tries, errFuture) = ParItr.map(iter) { case (img, target) => ImageIO.write(img, "png", target) }
+    val failures = tries.collect { case Failure(err) => err }.toSeq  // consumes all iterator elements
+    (failures, errFuture)
   }
 }

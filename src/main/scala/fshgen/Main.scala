@@ -2,6 +2,7 @@ package io.github.memo33.fshgen
 
 import scala.util.matching.Regex, Regex.Match
 import scala.util.{Try, Success, Failure}
+import scala.concurrent.Future
 import java.util.regex.Pattern
 import java.io.File
 import io.github.memo33.scdbpf._, DbpfUtil._, RotFlip._
@@ -242,13 +243,14 @@ object Main {
   def main(args: Array[String]): Unit = {
     parser.parse(args, Config()).map(collectInputFiles).map { conf =>
       val model = new Model(conf)
-      val failures: Seq[Throwable] =
+      val (failures: Seq[Throwable], errFuture: Future[Unit]) =
         conf.mode match {
           case Mode.Import =>
             import io.github.memo33.scdbpf.strategy.throwExceptions
             import concurrent.ExecutionContext.Implicits.global
             val failuresBuilder = Seq.newBuilder[Throwable]
-            val entries: Iterator[DbpfEntry] = ParItr.map(model.collectImages())(_.toRawEntry).flatMap {
+            val (entriesTry: Iterator[Try[DbpfEntry]], errFuture) = ParItr.map(model.collectImages())(_.toRawEntry)
+            val entries: Iterator[DbpfEntry] = entriesTry.flatMap {
               case Success(entry) => Some(entry)
               case Failure(err) => failuresBuilder += err; None
             }
@@ -258,7 +260,7 @@ object Main {
               val dbpf = DbpfFile.read(conf.outFile)
               dbpf.write(dbpf.entries.iterator ++ entries) // lazy evaluation
             }
-            failuresBuilder.result()
+            (failuresBuilder.result(), errFuture)
           case Mode.Export =>
             model.`export`()
         }
@@ -269,7 +271,14 @@ object Main {
         failures.head.printStackTrace()
         System.exit(1)
       } else {
-        println("SUCCESS!")
+        import concurrent.ExecutionContext.Implicits.global
+        errFuture.onComplete {
+          case Success(_) => println("SUCCESS!")
+          case Failure(err) =>
+            println(s"Encountered 1 error:")
+            err.printStackTrace()
+            System.exit(3)
+        }
       }
     } getOrElse {
       println("FAILED!")

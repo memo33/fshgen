@@ -7,7 +7,7 @@ import scala.util.{Try, Success, Failure}
 
 object ParItr {
 
-  def map[A, B](i: Iterator[A])(f: A => B)(implicit execctx: ExecutionContext): Iterator[Try[B]] = {
+  def map[A, B](i: Iterator[A])(f: A => B)(implicit execctx: ExecutionContext): (Iterator[Try[B]], Future[Unit]) = {
     val cpus = Runtime.getRuntime().availableProcessors() + 1
 //    val queue: BlockingQueue[Option[Future[B]]] = new ArrayBlockingQueue(cpus * cpus)
     val queue: BlockingQueue[Option[Future[B]]] = new ArrayBlockingQueue(1 + 16 * cpus)
@@ -15,11 +15,7 @@ object ParItr {
       try i.foreach(x => queue.put(Some(Future(f(x)))))
       finally queue.put(None) // poison
     }
-    sourceFuture.onComplete {
-      case Success(_) =>  // ignore
-      case Failure(e) => println(s"Uncaught exception:"); e.printStackTrace()
-    }
-    new Iterator[Try[B]] {
+    (new Iterator[Try[B]] {
 
       private var fopt: Option[Future[B]] = None
       private var alive = true
@@ -40,6 +36,6 @@ object ParItr {
         fopt
       }
 
-    }
+    }, sourceFuture)  // for handling potential errors
   }
 }
