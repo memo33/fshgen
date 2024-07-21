@@ -1,4 +1,4 @@
-package fshgen
+package io.github.memo33.fshgen
 
 import scala.util.matching.Regex, Regex.Match
 import java.util.regex.Pattern
@@ -60,7 +60,7 @@ object Config {
       matches exists { m => val s = m.group(Alpha); s != null && s.toLowerCase.startsWith("a") }
     def isSidewalkAlpha: Boolean =
       matches exists { m => val s = m.group(Alpha); s != null && s.toLowerCase.startsWith("b") }
-    private[this] def extractRF(m: Match, default: RotFlip): RotFlip = {
+    private def extractRF(m: Match, default: RotFlip): RotFlip = {
       val r = m.group(Rot); val f = m.group(Flip)
       if (r != null & f != null) R0F0 / RotFlip(r.toInt, f.toInt)
       else default
@@ -92,7 +92,7 @@ object Config {
 
 }
 
-object Main extends App {
+object Main {
 
   implicit val fshDirRead: scopt.Read[Fsh.FshDirectoryId] =
     scopt.Read.reads(s => (Fsh.FshDirectoryId withName s).asInstanceOf[Fsh.FshDirectoryId])
@@ -100,7 +100,7 @@ object Main extends App {
     scopt.Read.reads(s => (Fsh.FshFormat withName s).asInstanceOf[Fsh.FshFormat])
 
   val parser = new scopt.OptionParser[Config]("fshgen") {
-    head("fshgen", "0.1.1")
+    head("fshgen", BuildInfo.version)
     note("A command line tool for converting FSH files back and forth.\n")
     help("help") text ("prints this usage text")
 
@@ -108,101 +108,101 @@ object Main extends App {
       .action { (_, c) => c.copy(mode = Mode.Import) }
       .text("import PNG/BMP files as FSHs into DBPF dat files")
       .children(
-        opt[File]('o', "output") required() valueName("<file>") text ("output dat file")
-          action { (f, c) => c.copy(outFile = f) }
-          validate { f => if (!f.isDirectory) success else failure("output must not be a directory") },
+        opt[File]('o', "output").required().valueName("<file>").text("output dat file")
+          .action { (f, c) => c.copy(outFile = f) }
+          .validate { f => if (!f.isDirectory) success else failure("output must not be a directory") },
 
-        opt[Unit]('f', "force") text ("force overwriting existing dat file")
-          action { (_, c) => c.copy(force = true) },
+        opt[Unit]('f', "force").text("force overwriting existing dat file")
+          .action { (_, c) => c.copy(force = true) },
 
-        opt[Unit]('a', "append") text ("append to existing dat file")
-          action { (_, c) => c.copy(append = true) },
+        opt[Unit]('a', "append").text("append to existing dat file")
+          .action { (_, c) => c.copy(append = true) },
 
-        opt[Unit]('m', "mips-separate") text ("create separate mipmaps")
-          action { (_, c) => c.copy(mipsSeparate = true) },
+        opt[Unit]('m', "mips-separate").text("create separate mipmaps")
+          .action { (_, c) => c.copy(mipsSeparate = true) },
 
-        opt[Unit]("hd") text ("for HD textures, effectively scales first separate mipmap to 0.25 instead of 0.5, implies 'mips-separate' flag, also sets slice width and height to 256 if not specified otherwise")
-          action { (_, c) => c.copy(hd = true, mipsSeparate = true,
+        opt[Unit]("hd").text("for HD textures, effectively scales first separate mipmap to 0.25 instead of 0.5, implies 'mips-separate' flag, also sets slice width and height to 256 if not specified otherwise")
+          .action { (_, c) => c.copy(hd = true, mipsSeparate = true,
             sliceWidth = if (c.sliceWidth != 128) c.sliceWidth else 256,
             sliceHeight = if (c.sliceHeight != 128) c.sliceHeight else 256) },
 
-        opt[Unit]('e', "mips-embedded") text ("create embedded mipmaps")
-          action { (_, c) => c.copy(mipsEmbedded = true) },
+        opt[Unit]('e', "mips-embedded").text("create embedded mipmaps")
+          .action { (_, c) => c.copy(mipsEmbedded = true) },
 
-        opt[Int]('N', "mips-number") text ("number of mipmaps to generate, defaults to 4")
-          action { (n, c) => c.copy(mipsNumber = n) }
-          validate { n => if (n >= 0) success else failure("number of mipmaps needs to be positive") },
+        opt[Int]('N', "mips-number").text("number of mipmaps to generate, defaults to 4")
+          .action { (n, c) => c.copy(mipsNumber = n) }
+          .validate { n => if (n >= 0) success else failure("number of mipmaps needs to be positive") },
 
-        opt[Unit]('s', "slice") text ("slice images into rectangles, optionally compose different layers for same ID, optionally apply separate alpha mask (a/alpha), optionally generate sidewalk textures if sidewalk alpha is present (b/balpha)")
-          action { (_, c) => c.copy(slice = true) },
+        opt[Unit]('s', "slice").text("slice images into rectangles, optionally compose different layers for same ID, optionally apply separate alpha mask (a/alpha), optionally generate sidewalk textures if sidewalk alpha is present (b/balpha)")
+          .action { (_, c) => c.copy(slice = true) },
 
-        opt[Int]("slice-width") text ("the width of sliced images")
-          action { (n, c) => c.copy(sliceWidth = n) },
+        opt[Int]("slice-width").text("the width of sliced images")
+          .action { (n, c) => c.copy(sliceWidth = n) },
 
-        opt[Int]("slice-height") text ("the height of sliced images")
-          action { (n, c) => c.copy(sliceHeight = n) },
+        opt[Int]("slice-height").text("the height of sliced images")
+          .action { (n, c) => c.copy(sliceHeight = n) },
 
-        opt[Int]('i', "iid-offset") text ("offset of IIDs")
-          action { (off, c) => c.copy(iidOffset = off) },
+        opt[Int]('i', "iid-offset").text("offset of IIDs")
+          .action { (off, c) => c.copy(iidOffset = off) },
 
-        opt[String]("gid") text (f"alternative GID, defaults to 0x${Tgi.FshMisc.gid.get}%08X")
-          action { (gid, c) => c.copy(gid = java.lang.Long.decode(gid).toInt) },
+        opt[String]("gid").text(f"alternative GID, defaults to 0x${Tgi.FshMisc.gid.get}%08X")
+          .action { (gid, c) => c.copy(gid = java.lang.Long.decode(gid).toInt) },
 
-        opt[Unit]('D', "darken") text ("darken textures for S3D models")
-          action { (_, c) => c.copy(darken = true) },
+        opt[Unit]('D', "darken").text("darken textures for S3D models")
+          .action { (_, c) => c.copy(darken = true) },
 
-        opt[Unit]('B', "brighten") text ("brighten textures for non-S3D use")
-          action { (_, c) => c.copy(brighten = true) },
+        opt[Unit]('B', "brighten").text("brighten textures for non-S3D use")
+          .action { (_, c) => c.copy(brighten = true) },
 
-        opt[Unit]('d', "background-dark") text ("embed darkened sidewalk texture as background below transparency")
-          action { (_, c) => c.copy(backgroundDark = true) },
+        opt[Unit]('d', "background-dark").text("embed darkened sidewalk texture as background below transparency")
+          .action { (_, c) => c.copy(backgroundDark = true) },
 
-        opt[Unit]('b', "background-bright") text ("embed sidewalk texture as background below transparency")
-          action { (_, c) => c.copy(backgroundBright = true) },
+        opt[Unit]('b', "background-bright").text("embed sidewalk texture as background below transparency")
+          .action { (_, c) => c.copy(backgroundBright = true) },
 
-        opt[Fsh.FshFormat]('F', "format") text("encoding format, defaults to Dxt3. Allowed values: " + Fsh.FshFormat.values.mkString(", "))
-          action { (f, c) => c.copy(fshFormat = f) },
+        opt[Fsh.FshFormat]('F', "format").text("encoding format, defaults to Dxt3. Allowed values: " + Fsh.FshFormat.values.mkString(", "))
+          .action { (f, c) => c.copy(fshFormat = f) },
 
-        opt[Fsh.FshDirectoryId]("dir") text ("alternative FSH directory ID, defaults to G264. Allowed values: " + Fsh.FshDirectoryId.values.mkString(", "))
-          action { (d, c) => c.copy(fshDirId = d) },
+        opt[Fsh.FshDirectoryId]("dir").text("alternative FSH directory ID, defaults to G264. Allowed values: " + Fsh.FshDirectoryId.values.mkString(", "))
+          .action { (d, c) => c.copy(fshDirId = d) },
 
-        opt[Unit]("attach-name") text ("attach filename to FSH")
-          action { (_, c) => c.copy(attachName = true) },
+        opt[Unit]("attach-name").text("attach filename to FSH")
+          .action { (_, c) => c.copy(attachName = true) },
 
-        opt[Unit]("alpha-separate") text ("look for separate alpha files among files")
-          action { (_, c) => c.copy(alphaSeparate = true) },
+        opt[Unit]("alpha-separate").text("look for separate alpha files among files")
+          .action { (_, c) => c.copy(alphaSeparate = true) },
 
-        opt[Unit]("silent") text ("do not indicate the progress")
-          action { (_, c) => c.copy(silent = true) },
+        opt[Unit]("silent").text("do not indicate the progress")
+          .action { (_, c) => c.copy(silent = true) },
 
-        arg[File]("<file>...") unbounded() optional()
-          text ("image files to import. If length is zero, the filenames are read from std.in.")
-          action { (f, c) => c.copy(inputFiles = c.inputFiles :+ f) }
+        arg[File]("<file>...").unbounded().optional()
+          .text("image files to import. If length is zero, the filenames are read from std.in.")
+          .action { (f, c) => c.copy(inputFiles = c.inputFiles :+ f) }
       )
 
     cmd("export")
       .action { (_, c) => c.copy(mode = Mode.Export) }
       .text("export FSH files as PNGs from DBPF dat files")
       .children(
-        opt[File]('o', "output") valueName("<file>") text ("output directory for export. If absent, current directory is used.")
-          action { (f, c) => c.copy(outFile = f) }
-          validate { f => if (f.isDirectory) success else failure("output must be a directory and must exist") },
+        opt[File]('o', "output").valueName("<file>").text("output directory for export. If absent, current directory is used.")
+          .action { (f, c) => c.copy(outFile = f) }
+          .validate { f => if (f.isDirectory) success else failure("output must be a directory and must exist") },
 
-        opt[Unit]('f', "force") text ("force overwriting existing image files")
-          action { (_, c) => c.copy(force = true) },
+        opt[Unit]('f', "force").text("force overwriting existing image files")
+          .action { (_, c) => c.copy(force = true) },
 
-        opt[String]('p', "pattern") text ("a regex pattern to filter the 8-digit hex representation of the IIDs, such as '.*[49ef]' or '57.*'")
-          action { (s, c) => c.copy(iidPatternString = s) },
+        opt[String]('p', "pattern").text("a regex pattern to filter the 8-digit hex representation of the IIDs, such as '.*[49ef]' or '57.*'")
+          .action { (s, c) => c.copy(iidPatternString = s) },
 
-        opt[Unit]("alpha-separate") text ("export alpha channels as separate files")
-          action { (_, c) => c.copy(alphaSeparate = true) },
+        opt[Unit]("alpha-separate").text("export alpha channels as separate files")
+          .action { (_, c) => c.copy(alphaSeparate = true) },
 
-        opt[Unit]("silent") text ("do not indicate the progress")
-          action { (_, c) => c.copy(silent = true) },
+        opt[Unit]("silent").text("do not indicate the progress")
+          .action { (_, c) => c.copy(silent = true) },
 
-        arg[File]("<file>...") unbounded() optional()
-          text ("dat files to export FSHs from. If length is zero, the filenames are read from std.in.")
-          action { (f, c) => c.copy(inputFiles = c.inputFiles :+ f) }
+        arg[File]("<file>...").unbounded().optional()
+          .text ("dat files to export FSHs from. If length is zero, the filenames are read from std.in.")
+          .action { (f, c) => c.copy(inputFiles = c.inputFiles :+ f) }
       )
 
     checkConfig { c => c.mode match {
@@ -228,7 +228,7 @@ object Main extends App {
       if (!config.inputFiles.isEmpty)
         config.inputFiles
       else
-        Stream continually scala.io.StdIn.readLine takeWhile (_ != null) filter (_.nonEmpty) map (s => new File(s))
+        LazyList.continually(scala.io.StdIn.readLine()).takeWhile(_ != null).filter(_.nonEmpty).map(s => new File(s))
     val existingFiles = files flatMap { file =>
       if (!file.exists) {
         println(s"File $file does not exist and has been skipped")
@@ -238,25 +238,27 @@ object Main extends App {
     config.copy(inputFiles = existingFiles)
   }
 
-  parser.parse(args, Config()) map collectInputFiles map { conf =>
-    val model = new Model(conf)
-    conf.mode match {
-      case Mode.Import =>
-        import io.github.memo33.scdbpf.strategy.throwExceptions
-        import concurrent.ExecutionContext.Implicits.global
-        val entries = ParItr.map(model.collectImages().iterator)(_.toRawEntry)
-        if (!conf.append || !conf.outFile.exists) {
-          DbpfFile.write(entries, conf.outFile)
-        } else {
-          val dbpf = DbpfFile.read(conf.outFile)
-          dbpf.write(dbpf.entries.toStream ++ entries) // lazy evaluation
-        }
-      case Mode.Export =>
-        model.export()
+  def main(args: Array[String]): Unit = {
+    parser.parse(args, Config()) map collectInputFiles map { conf =>
+      val model = new Model(conf)
+      conf.mode match {
+        case Mode.Import =>
+          import io.github.memo33.scdbpf.strategy.throwExceptions
+          import concurrent.ExecutionContext.Implicits.global
+          val entries = ParItr.map(model.collectImages().iterator)(_.toRawEntry)
+          if (!conf.append || !conf.outFile.exists) {
+            DbpfFile.write(entries, conf.outFile)
+          } else {
+            val dbpf = DbpfFile.read(conf.outFile)
+            dbpf.write(dbpf.entries.to(LazyList) ++ entries) // lazy evaluation
+          }
+        case Mode.Export =>
+          model.`export`()
+      }
+      if (!conf.silent) println() // complete the line started by progressor
+      println("SUCCESS!")
+    } getOrElse {
+      println("FAILED!")
     }
-    if (!conf.silent) println() // complete the line started by progressor
-    println("SUCCESS!")
-  } getOrElse {
-    println("FAILED!")
   }
 }

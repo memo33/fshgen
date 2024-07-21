@@ -1,19 +1,27 @@
 name := "fshgen"
 
-organization := "com.github.memo33"
+organization := "io.github.memo33"
 
 version := "0.1.6-SNAPSHOT"
 
-scalaVersion := "2.11.12"
+scalaVersion := "3.4.2"
 
 scalacOptions ++= Seq(
   "-unchecked",
   "-deprecation",
   "-feature",
   //"-Yinline-warnings",
-  "-optimize",
+  //"-optimize",
   "-encoding", "UTF-8",
-  "-target:jvm-1.8")
+  "-release:8")
+
+// make build info available in source files
+lazy val root = (project in file("."))
+  .enablePlugins(BuildInfoPlugin)
+  .settings(
+    buildInfoKeys := Seq[BuildInfoKey](name, organization, version, scalaVersion, sbtVersion, licenses),
+    buildInfoPackage := "io.github.memo33.fshgen"
+  )
 
 autoAPIMappings := true
 
@@ -36,14 +44,14 @@ dist := {
 // Create a large executable jar with `sbt assembly`.
 assembly / assemblyJarName := s"${name.value}-${version.value}.jar"
 
-assembly / mainClass := Some("fshgen.Main")
+assembly / mainClass := Some("io.github.memo33.fshgen.Main")
 
 
 
-libraryDependencies += "org.scalatest" %% "scalatest" % "2.1.5" % "test"
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.15" % "test"
 
 libraryDependencies += "com.mortennobel" % "java-image-scaling" % "0.8.5"
 
-libraryDependencies += "com.github.scopt" %% "scopt" % "3.2.0"
+libraryDependencies += "com.github.scopt" %% "scopt" % "4.1.0"
 
-libraryDependencies += "io.github.memo33" %% "scdbpf" % "0.2.1"
+libraryDependencies += "io.github.memo33" %% "scdbpf" % "0.2.1" cross CrossVersion.for3Use2_13

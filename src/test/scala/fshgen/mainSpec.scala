@@ -1,10 +1,11 @@
-package fshgen
+package io.github.memo33.fshgen
 
-import org.scalatest.{WordSpec, Matchers}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import Config.IdContext
 import io.github.memo33.scdbpf.DbpfUtil._, RotFlip._
 
-class MainSpec extends WordSpec with Matchers {
+class MainSpec extends AnyWordSpec with Matchers {
 
   "IdContext" should {
     val s = "0x1a001000-0-1___+100_0_+0x200 +300-2-1    2a001000_0_2a002000-2-0_-e00-1-0_-0x100_b_somemoretextandnumbers_1_2_3.png"

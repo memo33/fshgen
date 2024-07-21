@@ -1,4 +1,4 @@
-package fshgen
+package io.github.memo33.fshgen
 
 import io.github.memo33.scdbpf.DbpfUtil._, RotFlip._
 import io.github.memo33.scdbpf.compat.Image
@@ -28,9 +28,9 @@ class DihImage[A] private (val img: Image[A], val rf: RotFlip) extends Image[A] 
   lazy val height = if (transposed) img.width else img.height
 
   import DihImage.DihOrientationIsDihedral
-  @inline private[this] lazy val orientation = new DihOrientation(1, -1) *: rf
-  @inline private[this] def transposed = rf.rot % 2 != 0
-  @inline private[this] def project(sign: Int) = (1 - sign) / 2 // 1 to 0, -1 to 1
+  @inline private lazy val orientation = new DihOrientation(1, -1) *: rf
+  @inline private def transposed = rf.rot % 2 != 0
+  @inline private def project(sign: Int) = (1 - sign) / 2 // 1 to 0, -1 to 1
 
   def apply(x: Int, y: Int): A = {
     if (!transposed) img(project( orientation.x) * (img.width-1) + orientation.x * x, project(-orientation.y) * (img.height-1) - orientation.y * y)
