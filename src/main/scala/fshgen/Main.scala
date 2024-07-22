@@ -1,6 +1,8 @@
 package io.github.memo33.fshgen
 
 import scala.util.matching.Regex, Regex.Match
+import scala.util.{Try, Success, Failure}
+import scala.concurrent.Future
 import java.util.regex.Pattern
 import java.io.File
 import io.github.memo33.scdbpf._, DbpfUtil._, RotFlip._
@@ -239,26 +241,48 @@ object Main {
   }
 
   def main(args: Array[String]): Unit = {
-    parser.parse(args, Config()) map collectInputFiles map { conf =>
+    parser.parse(args, Config()).map(collectInputFiles).map { conf =>
       val model = new Model(conf)
-      conf.mode match {
-        case Mode.Import =>
-          import io.github.memo33.scdbpf.strategy.throwExceptions
-          import concurrent.ExecutionContext.Implicits.global
-          val entries = ParItr.map(model.collectImages().iterator)(_.toRawEntry)
-          if (!conf.append || !conf.outFile.exists) {
-            DbpfFile.write(entries, conf.outFile)
-          } else {
-            val dbpf = DbpfFile.read(conf.outFile)
-            dbpf.write(dbpf.entries.to(LazyList) ++ entries) // lazy evaluation
-          }
-        case Mode.Export =>
-          model.`export`()
-      }
+      val (failures: Seq[Throwable], errFuture: Future[Unit]) =
+        conf.mode match {
+          case Mode.Import =>
+            import io.github.memo33.scdbpf.strategy.throwExceptions
+            import concurrent.ExecutionContext.Implicits.global
+            val failuresBuilder = Seq.newBuilder[Throwable]
+            val (entriesTry: Iterator[Try[DbpfEntry]], errFuture) = ParItr.map(model.collectImages())(_.toRawEntry)
+            val entries: Iterator[DbpfEntry] = entriesTry.flatMap {
+              case Success(entry) => Some(entry)
+              case Failure(err) => failuresBuilder += err; None
+            }
+            if (!conf.append || !conf.outFile.exists) {
+              DbpfFile.write(entries, conf.outFile)
+            } else {
+              val dbpf = DbpfFile.read(conf.outFile)
+              dbpf.write(dbpf.entries.iterator ++ entries) // lazy evaluation
+            }
+            (failuresBuilder.result(), errFuture)
+          case Mode.Export =>
+            model.`export`()
+        }
+
       if (!conf.silent) println() // complete the line started by progressor
-      println("SUCCESS!")
+      if (failures.nonEmpty) {
+        println(s"Encountered ${failures.length} errors:")
+        failures.head.printStackTrace()
+        System.exit(1)
+      } else {
+        import concurrent.ExecutionContext.Implicits.global
+        errFuture.onComplete {
+          case Success(_) => println("SUCCESS!")
+          case Failure(err) =>
+            println(s"Encountered 1 error:")
+            err.printStackTrace()
+            System.exit(3)
+        }
+      }
     } getOrElse {
       println("FAILED!")
+      System.exit(2)
     }
   }
 }

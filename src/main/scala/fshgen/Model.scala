@@ -9,6 +9,8 @@ import com.mortennobel.imagescaling.ResampleOp
 import javax.imageio.ImageIO
 import scala.collection.mutable
 import scala.collection.immutable.SortedSet
+import scala.util.{Try, Success, Failure}
+import scala.concurrent.Future
 
 import scala.language.implicitConversions
 import Experimental.bufferedImageAsImage
@@ -202,7 +204,7 @@ trait Import extends FileMatching { this: Model =>
   }
 
   def combineImageWithAlpha(img: Image[RGBA], alpha: Image[Gray]): Image[RGBA] = new ProxyImage(img) {
-    assert(img.width == alpha.width, img.height == alpha.height)
+    assert(img.width == alpha.width && img.height == alpha.height)
     def apply(x: Int, y: Int): RGBA = RGBA(img(x, y).i & 0x00FFFFFF | alpha(x, y).i << 24)
   }
 
@@ -224,6 +226,11 @@ trait Import extends FileMatching { this: Model =>
     val mips = produceMips(bi) map applyFilter
     val img = applyFilter(bufferedImageAsImage(bi))
     val imgs = Iterable(img) ++ (if (conf.mipsEmbedded) mips else Iterable.empty)
+    if (conf.fshFormat == FshFormat.Dxt1 || conf.fshFormat == FshFormat.Dxt3) {
+      imgs.find(i => i.width % 4 != 0 || i.height % 4 != 0).foreach { i =>
+        throw new UnsupportedOperationException(s"Width and height of DXT-compressed images must be divisible by 4 (size=${i.width}×${i.height}, $tgi)")
+      }
+    }
     val elem = new FshElement(imgs, conf.fshFormat, label)
     val fsh = Fsh(Seq(elem), conf.fshDirId)
     if (!conf.mipsSeparate) {
@@ -244,7 +251,7 @@ trait Import extends FileMatching { this: Model =>
 
   def buildTgi(id: Int): Tgi = Tgi(Tgi.Fsh.tid.get, conf.gid, id + conf.iidOffset)
 
-  def collectImages(): Iterable[BufferedEntry[Fsh]] = {
+  def collectImages(): Iterator[BufferedEntry[Fsh]] = {
     val defaultId = Iterator.from(4, 0x100)
     val entries = if (conf.slice) {
       buildSlicedEntries
@@ -272,7 +279,7 @@ trait Import extends FileMatching { this: Model =>
         buildFshs(combined, buildTgi(id), if (conf.attachName) Some(fileStem(colFile)) else None)
       }
     }
-    entries.to(Iterable)
+    entries
   }
 }
 
@@ -291,7 +298,7 @@ trait Export { this: Model =>
     }
   }
 
-  def `export`(): Unit = {
+  def `export`(): (Seq[Throwable], Future[Unit]) = {
     import io.github.memo33.scdbpf.strategy.throwExceptions
     val singleFile = conf.inputFiles.lengthCompare(1) <= 0
     val iter = for {
@@ -312,8 +319,8 @@ trait Export { this: Model =>
       target = new File(conf.outFile, name + ".png") if conf.force || !target.exists
     } yield (img, target)
     import concurrent.ExecutionContext.Implicits.global
-    ParItr.map(iter) {
-      case (img, target) => ImageIO.write(img, "png", target)
-    } foreach { _ => /*consume*/ }
+    val (tries, errFuture) = ParItr.map(iter) { case (img, target) => ImageIO.write(img, "png", target) }
+    val failures = tries.collect { case Failure(err) => err }.toSeq  // consumes all iterator elements
+    (failures, errFuture)
   }
 }
