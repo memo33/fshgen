@@ -62,7 +62,9 @@ trait ObjConversion { this: Model =>
       )
 
     val mg0 =
-      S3d.defaultMats(S3d.Transparency.Transparent, id = matId, name = Option(mesh.getMaterialName),  // TODO allow parsing ID from name
+      S3d.defaultMats(
+        if (conf.semitransparentMaterials) S3d.Transparency.Semitransparent else S3d.Transparency.Transparent,
+        id = matId, name = Option(mesh.getMaterialName),  // TODO allow parsing ID from name
         wrapU = S3d.WrapMode.Repeat, wrapV = S3d.WrapMode.Repeat)
     val mg = mg0.copy(materials = mg0.materials.map(_.copy(magFilter = S3d.MagnifFilter.Nearest, minFilter = S3d.MinifFilter.NearestNoMipmap)))
 

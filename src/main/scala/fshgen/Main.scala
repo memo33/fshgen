@@ -39,6 +39,7 @@ case class Config(
   iidPatternString: String = ".*",
   withBatModels: Boolean = false,
   noFlipV: Boolean = false,
+  semitransparentMaterials: Boolean = false,
 ) {
   lazy val iidPattern: Pattern = Pattern.compile(iidPatternString, Pattern.CASE_INSENSITIVE)
 }
@@ -181,6 +182,9 @@ object Main {
 
         opt[Unit]("no-flip-v").text("unless this option is set, direction of v-coordinates is by default reversed upon conversion from OBJ to S3D")
           .action { (_, c) => c.copy(noFlipV = true) },
+
+        opt[Unit]("semitransparent-materials").text("enable settings for semitransparent materials on S3Ds (usually not needed)")
+          .action { (_, c) => c.copy(semitransparentMaterials = true) },
 
         opt[Unit]("silent").text("do not indicate the progress")
           .action { (_, c) => c.copy(silent = true) },
