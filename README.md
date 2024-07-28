@@ -169,7 +169,6 @@ If and only if a sidewalk alpha mask is found, sidewalk textures are generated.
 
 ## Compiling
 
-Compiling this program requires adding resources from previous version.
 Use `sbt dist` to create a full distribution zip file. Alternatively, use
 `sbt pack` to create binaries.
 
