@@ -8,42 +8,39 @@ are:
   (export-only) multi-FSHs
 - IID shifts and mipmap creation
 - on-the-fly S3D-darkening and brightening as per the color curves
-- conversion of Wavefront .obj files to S3D
+- conversion of Wavefront .obj model files to S3D
 
 
 ## Download
 
-The current version is available under GitHub releases.
-Older versions are available at https://www.dropbox.com/sh/dx40oit1lgdey1v/AADAIzFzMKVw6PLQI83nfQLQa?dl=0
+The current version is available under [GitHub releases](https://github.com/memo33/fshgen/releases).
 
 
 ## Requirements
 
-This program requires Java 1.8 or later.
+This program requires Java 8 or later.
 
 
 ## Installation
 
-There are many ways to install this program. One way is to extract the jar file
-contained in the zip archive to any permanent location and (assuming a Unix
-shell) add the following to your (bash) profile (with the path replaced):
+Extract the contents of the zip file and use the `fshgen.bat` or `fshgen` scripts to invoke the CLI.
+For example, on Windows
 
-    alias fshgen="java -jar -Djava.awt.headless=true /path/to/fshgenjarfile.jar"
+    .\fshgen --help
 
-That way, you can use `fshgen` as a command. (The _headless_ option tells AWT
-that the program is executed from the console, so that no GUI thread needs to be
-started.)
+and on Linux or macOS
+
+    ./fshgen --help
+
+To access the `fshgen` command from any directory, add the script to your PATH or define an alias.
 
 
 ## Usage
 
 There are two `fshgen` commands: `import` (used for converting .png or .bmp to
 FSH as DBPF dat file or .obj to S3D) and `export` (used to export FSH files
-from a dat file to .png). See the examples below. To print the usage text, use
-`fshgen --help`.
+from a dat file to .png).
 
-
-## Examples
 
 ### Import
 
@@ -169,8 +166,8 @@ If and only if a sidewalk alpha mask is found, sidewalk textures are generated.
 
 ## Compiling
 
-Use `sbt dist` to create a full distribution zip file. Alternatively, use
-`sbt pack` to create binaries.
+Use `sbt assembly` to create a runnable jar file.
+Use `sbt dist` to create a full distribution zip file.
 
 
 ## License

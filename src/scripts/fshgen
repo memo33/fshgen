@@ -1,0 +1,9 @@
+#!/bin/sh
+# Invocation of fshgen command-line interface on Linux or macOS.
+# In a terminal, call:
+#
+#     ./fshgen --help
+
+SCRIPTDIR="${0%/*}"
+
+java -jar -Djava.awt.headless=true "$SCRIPTDIR/fshgen.jar" "$@"
