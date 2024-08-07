@@ -34,10 +34,6 @@ trait ObjConversion { this: Model =>
         face.getReferences.iterator.asScala
       }
       .distinctBy(refToLookup)
-      .distinctBy { ref =>
-        assert(ref.vertexIndex >= 0 && ref.texCoordIndex >= 0)  // -1 if missing
-        (ref.vertexIndex, ref.texCoordIndex)
-      }
       .toIndexedSeq
     assert(uniqueRefs.forall(ref => ref.vertexIndex >= 0 && ref.texCoordIndex >= 0))  // -1 if missing, but should not happen due to `hasTextureCoordinates` and `hasVertices`
 
