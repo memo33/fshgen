@@ -6,6 +6,7 @@ import scala.concurrent.Future
 import java.util.regex.Pattern
 import java.io.File
 import io.github.memo33.scdbpf._, DbpfUtil._, RotFlip._
+import io.github.memo33.jsquish.Squish
 
 
 object Mode extends Enumeration {
@@ -35,6 +36,8 @@ case class Config(
   alphaSeparate: Boolean = false,
   fshDirId: Fsh.FshDirectoryId = Fsh.FshDirectoryId.G264,
   fshFormat: Fsh.FshFormat = Fsh.FshFormat.Dxt3,
+  weightByAlpha: Boolean = true,
+  compressionMetric: Squish.CompressionMetric = Squish.CompressionMetric.UNIFORM,
   silent: Boolean = false,
   iidPatternString: String = ".*",
   withBatModels: Boolean = false,
@@ -170,6 +173,12 @@ object Main {
 
         opt[Fsh.FshDirectoryId]("dir").text("alternative FSH directory ID, defaults to G264. Allowed values: " + Fsh.FshDirectoryId.values.mkString(", "))
           .action { (d, c) => c.copy(fshDirId = d) },
+
+        opt[Boolean]("weight-by-alpha").valueName("<true|false>").text("in DXT compression, assign less weight to semi-transparent pixels (default: true)")
+          .action { (b, c) => c.copy(weightByAlpha = b) },
+
+        opt[String]("compression-metric").text("metric to use for fit in DXT compression, defaults to \"uniform\". Allowed values: " + Squish.CompressionMetric.values.map(_.toString.toLowerCase()).mkString(", "))
+          .action { (m, c) => c.copy(compressionMetric = Squish.CompressionMetric.values.find(_.toString.toLowerCase() == m).get) },
 
         opt[Unit]("attach-name").text("attach filename to FSH")
           .action { (_, c) => c.copy(attachName = true) },

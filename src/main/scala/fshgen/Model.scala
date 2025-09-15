@@ -323,13 +323,15 @@ trait Import extends FileMatching with ObjConversion { this: Model =>
         throw new UnsupportedOperationException(s"Width and height of DXT-compressed images must be divisible by 4 (size=${i.width}×${i.height}, $tgi)")
       }
     }
-    val elem = new FshElement(imgs, conf.fshFormat, label)
+    def mkElem(imgs: Iterable[Image[RGBA]], label: Option[String]) =
+      new FshElement(imgs, conf.fshFormat, label, dxtWeightByAlpha = Some(conf.weightByAlpha), dxtCompressionMetric = Some(conf.compressionMetric))
+    val elem = mkElem(imgs, label)
     val fsh = Fsh(Seq(elem), conf.fshDirId)
     if (!conf.mipsSeparate) {
       Iterable(BufferedEntry(tgi, fsh, compressed = true))
     } else {
       val descendingTgis = Iterator.iterate(tgi)(x => x.copy(iid = x.iid-1))
-      val mipFshs = (if (conf.hd) mips.tail else mips) map (img => Fsh(Seq(new FshElement(Iterable(img), conf.fshFormat)), conf.fshDirId))
+      val mipFshs = (if (conf.hd) mips.tail else mips).map(img => Fsh(Seq(mkElem(Iterable(img), label = None)), conf.fshDirId))
       (Iterable(fsh) ++ mipFshs).map(f => BufferedEntry(descendingTgis.next(), f, compressed = true))
     }
   }
