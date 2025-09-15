@@ -318,7 +318,7 @@ trait Import extends FileMatching with ObjConversion { this: Model =>
     val mips = produceMips(bi) map applyFilter
     val img = applyFilter(bufferedImageAsImage(bi))
     val imgs = Iterable(img) ++ (if (conf.mipsEmbedded) mips else Iterable.empty)
-    if (conf.fshFormat == FshFormat.Dxt1 || conf.fshFormat == FshFormat.Dxt3) {
+    if (conf.fshFormat == FshFormat.Dxt1 || conf.fshFormat == FshFormat.Dxt3 || conf.fshFormat == FshFormat.Dxt5) {
       imgs.find(i => i.width % 4 != 0 || i.height % 4 != 0).foreach { i =>
         throw new UnsupportedOperationException(s"Width and height of DXT-compressed images must be divisible by 4 (size=${i.width}×${i.height}, $tgi)")
       }

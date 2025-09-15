@@ -2,7 +2,7 @@ name := "fshgen"
 
 organization := "io.github.memo33"
 
-version := "0.2.0"
+version := "0.2.1-SNAPSHOT"
 
 scalaVersion := "3.4.2"
 
@@ -67,6 +67,6 @@ libraryDependencies += "com.mortennobel" % "java-image-scaling" % "0.8.5"
 
 libraryDependencies += "com.github.scopt" %% "scopt" % "4.1.0"
 
-libraryDependencies += "io.github.memo33" %% "scdbpf" % "0.2.1" cross CrossVersion.for3Use2_13
+libraryDependencies += "io.github.memo33" %% "scdbpf" % "0.2.2-SNAPSHOT" cross CrossVersion.for3Use2_13
 
 libraryDependencies += "com.github.mokiat" % "java-data-front" % "v2.0.1" from "https://github.com/mokiat/java-data-front/releases/download/v2.0.1/com.mokiat.data.front-2.0.1.jar"
