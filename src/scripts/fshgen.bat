@@ -10,4 +10,4 @@ REM     .\fshgen --help
 
 SET SCRIPTDIR=%~dp0.
 
-java -jar -Djava.awt.headless=true "%SCRIPTDIR%\fshgen.jar" %*
+java -jar -Dfile.encoding=UTF-8 -Djava.awt.headless=true "%SCRIPTDIR%\fshgen.jar" %*
